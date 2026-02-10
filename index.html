@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SE Prompt Builder</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --card: #111826;
+            --text: #e6edf3;
+            --muted: #9fb0c3;
+            --line: #203043;
+            --accent: #5cc8ff;
+            --good: #37d67a;
+            --warn: #ffcc66;
+            --danger: #ff7b7b;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.4;
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--text);
+        }
+        
+        header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        header .logo-title {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        header img {
+            height: 40px;
+            width: auto;
+        }
+        
+        header h1 {
+            font-size: 16px;
+            margin: 0;
+            font-weight: 650;
+            color: var(--text);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+        }
+        
+        .main-content {
+            min-width: 0;
+        }
+        
+        .sidebar {
+            position: sticky;
+            top: 24px;
+            height: fit-content;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--line);
+        }
+        
+        .tab {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-bottom: none;
+            color: var(--muted);
+            padding: 12px 24px;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            background: #151d2a;
+            color: var(--text);
+        }
+        
+        .tab.active {
+            background: var(--card);
+            color: var(--accent);
+            border-color: var(--accent);
+            border-bottom: 2px solid var(--card);
+            margin-bottom: -2px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--line);
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 650;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+        
+        .panel-body {
+            padding: 16px;
+        }
+        
+        .field-group {
+            margin-bottom: 16px;
+        }
+        
+        label {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        
+        .required {
+            color: var(--danger);
+            margin-left: 3px;
+        }
+        
+        select, input[type="text"], textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: #0e1522;
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+        
+        select:focus, input:focus, textarea:focus {
+            border-color: var(--accent);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        textarea.ai-output {
+            min-height: 200px;
+            font-family: inherit;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        button {
+            background: var(--card);
+            border: 1px solid var(--line);
+            color: var(--text);
+            padding: 9px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        
+        button:hover {
+            border-color: #2d4460;
+        }
+        
+        button.primary {
+            background: linear-gradient(180deg, #172437, #111826);
+            border-color: #2d4460;
+        }
+        
+        button.primary:hover {
+            border-color: #3f6288;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .tool-recommendation {
+            background: rgba(255, 204, 102, 0.1);
+            border-left: 3px solid var(--warn);
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            border-radius: 8px;
+            color: var(--warn);
+        }
+        
+        .prompt-output {
+            background: #0b1220;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 14px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            color: var(--text);
+        }
+        
+        .success-message {
+            background: rgba(55, 214, 122, 0.1);
+            color: var(--good);
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            display: none;
+            border: 1px solid rgba(55, 214, 122, 0.2);
+        }
+        
+        .workflow-step {
+            background: rgba(92, 200, 255, 0.1);
+            border: 1px solid rgba(92, 200, 255, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        
+        .workflow-step strong {
+            color: var(--accent);
+        }
+        
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 6px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: static;
+                order: -1;
+            }
+            
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-title">
+            <img id="headerLogo" alt="Logo" style="display:none;">
+            <h1>SE Prompt Builder</h1>
+        </div>
+        <button id="clearAllButton" style="padding: 8px 12px; font-size: 13px;">🗑️ Clear All</button>
+    </header>
+    
+    <div class="container">
+        <div class="main-content">
+            <!-- Tabs Navigation -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('prompt-builder', this)">📝 Prompt Builder</div>
+                <div class="tab" onclick="switchTab('document-export', this)">📄 Generate Document</div>
+            </div>
+            
+            <!-- Tab 1: Prompt Builder -->
+            <div id="prompt-builder" class="tab-content active">
+                <div class="panel">
+                    <div class="panel-header">Select Prompt</div>
+                    <div class="panel-body">
+                    <div class="field-group">
+                        <label for="promptSelect">Prompt / Workflow <span class="required">*</span></label>
+                        <select id="promptSelect">
+                            <option value="">-- Choose a prompt --</option>
+                            <optgroup label="Prospect Research">
+                                <option value="1A">1A — Basic Industry & Pain Point Research</option>
+                                <option value="1B">1B — Company-Specific Deep Dive</option>
+                                <option value="1C">1C — Pain Point Hypothesis Builder</option>
+                            </optgroup>
+                            <optgroup label="Competitive Analysis">
+                                <option value="2A">2A — Basic Competitive Comparison Matrix</option>
+                                <option value="2B">2B — Competitive Battle Card Generator</option>
+                                <option value="2C">2C — Feature Gap Analysis</option>
+                                <option value="2D">2D — Competitive Win/Loss Intelligence</option>
+                            </optgroup>
+                        </select>
+                        <div class="hint" style="margin-top: 8px;">💡 These prompts work with any AI tool: Claude, ChatGPT, Gemini, or MS Copilot</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="fieldsContainer"></div>
+            
+            <div id="promptSection" class="panel hidden">
+                <div class="panel-header">Step 2: Copy Prompt</div>
+                <div class="panel-body">
+                    <div class="workflow-step">
+                        <strong>→</strong> Copy the prompt below and paste it into your preferred AI tool (Claude, ChatGPT, Gemini, or MS Copilot)
+                    </div>
+                    <div class="prompt-output" id="promptOutput"></div>
+                    <div class="button-group">
+                        <button class="primary" id="copyPromptButton">📋 Copy Prompt</button>
+                    </div>
+                    <div id="copySuccess" class="success-message">✓ Prompt copied to clipboard!</div>
+                </div>
+            </div>
+            </div>
+            <!-- End Tab 1 -->
+            
+            <!-- Tab 2: Document Export -->
+            <div id="document-export" class="tab-content">
+                <div class="panel">
+                    <div class="panel-header">Paste AI Output & Generate PDF</div>
+                    <div class="panel-body">
+                        <div class="workflow-step">
+                            <strong>→</strong> Paste your Markdown-formatted AI output below. A live preview will appear, then export as a branded PDF.
+                        </div>
+                        
+                        <div class="field-group">
+                            <label for="customerName">Customer/Company Name <span class="required">*</span></label>
+                            <input type="text" id="customerName" placeholder="e.g., Acme Corporation" oninput="updatePreview()">
+                        </div>
+                        
+                        <div class="field-group">
+                            <label for="promptUsed">Prompt Used <span class="required">*</span></label>
+                            <select id="promptUsed" onchange="updatePreview()">
+                                <option value="">-- Select the prompt you used --</option>
+                                <option value="1A — Basic Industry & Pain Point Research">1A — Basic Industry & Pain Point Research</option>
+                                <option value="1B — Company-Specific Deep Dive">1B — Company-Specific Deep Dive</option>
+                                <option value="1C — Pain Point Hypothesis Builder">1C — Pain Point Hypothesis Builder</option>
+                                <option value="2A — Basic Competitive Comparison Matrix">2A — Basic Competitive Comparison Matrix</option>
+                                <option value="2B — Competitive Battle Card Generator">2B — Competitive Battle Card Generator</option>
+                                <option value="2C — Feature Gap Analysis">2C — Feature Gap Analysis</option>
+                                <option value="2D — Competitive Win/Loss Intelligence">2D — Competitive Win/Loss Intelligence</option>
+                            </select>
+                        </div>
+                        
+                        <div class="field-group">
+                            <label for="aiOutputPaste">AI Research Output (Markdown) <span class="required">*</span></label>
+                            <textarea id="aiOutputPaste" class="ai-output" placeholder="Paste the complete Markdown-formatted research output from your AI tool here..." style="min-height: 250px;" oninput="updatePreview()"></textarea>
+                        </div>
+                        
+                        <div class="button-group">
+                            <button class="primary" onclick="exportDocument('pdf')">📕 Export as PDF</button>
+                            <button class="primary" onclick="exportDocument('docx')" style="margin-left: 8px; background: linear-gradient(180deg, #1a3352, #111826);">📄 Export as Word</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Live Preview Panel -->
+                <div class="panel" id="livePreviewPanel" style="display: none;">
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Live Document Preview</span>
+                        <span style="font-size: 11px; color: var(--good); font-weight: normal; text-transform: none;">● Live</span>
+                    </div>
+                    <div class="panel-body" style="padding: 0;">
+                        <div id="livePreviewContent" style="background: #fff; color: #222; padding: 30px; border-radius: 0 0 16px 16px; max-height: 600px; overflow-y: auto; font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.7;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Tab 2 -->
+        </div>
+        
+        <div class="sidebar">
+            <div class="panel" id="outputPreviewPanel" style="display: none;">
+                <div class="panel-header">Expected Output</div>
+                <div class="panel-body" id="outputPreview" style="font-size: 13px; line-height: 1.6;">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // =============================================
+        // CONFIGURATION
+        // =============================================
+        const CONFIG = {
+            // Set to null to disable password protection, or a string to enable
+            password: "NICESE2025",
+            // Branding - used in PDF export and header
+            brandName: "SE Toolkit",
+            brandTagline: "Solutions Engineering",
+            brandUrl: "",
+            brandColor: "#1a73e8",
+            // Set to false to hide logo and brand in the app header
+            showBrandInHeader: false
+        };
+        
+        // =============================================
+        // PASSWORD GATE
+        // =============================================
+        (function() {
+            if (!CONFIG.password) return; // Skip if no password set
+            
+            const STORAGE_KEY = 'se_prompt_builder_auth';
+            const sessionAuth = sessionStorage.getItem(STORAGE_KEY);
+            
+            if (sessionAuth === 'true') return; // Already authenticated this session
+            
+            // Block the page
+            document.documentElement.style.overflow = 'hidden';
+            const overlay = document.createElement('div');
+            overlay.id = 'authOverlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#0b0f14;z-index:99999;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#111826;border:1px solid #203043;border-radius:16px;padding:40px;text-align:center;max-width:400px;width:90%;">
+                    <h2 style="color:#e6edf3;margin-bottom:8px;font-size:18px;">SE Prompt Builder</h2>
+                    <p style="color:#9fb0c3;margin-bottom:24px;font-size:13px;">Enter the team password to continue</p>
+                    <input type="password" id="authPassword" placeholder="Password" 
+                        style="width:100%;padding:12px;border-radius:12px;border:1px solid #203043;background:#0e1522;color:#e6edf3;font-size:14px;font-family:inherit;outline:none;margin-bottom:16px;text-align:center;"
+                        onkeydown="if(event.key==='Enter')document.getElementById('authSubmit').click()">
+                    <button id="authSubmit" style="width:100%;padding:12px;border-radius:12px;border:1px solid #2d4460;background:linear-gradient(180deg,#172437,#111826);color:#e6edf3;font-size:14px;cursor:pointer;font-family:inherit;">
+                        Access Tool
+                    </button>
+                    <p id="authError" style="color:#ff7b7b;margin-top:12px;font-size:13px;display:none;">Incorrect password. Try again.</p>
+                </div>
+            `;
+            document.body.prepend(overlay);
+            
+            setTimeout(() => document.getElementById('authPassword').focus(), 100);
+            
+            document.getElementById('authSubmit').addEventListener('click', function() {
+                const input = document.getElementById('authPassword').value;
+                if (input === CONFIG.password) {
+                    sessionStorage.setItem(STORAGE_KEY, 'true');
+                    overlay.remove();
+                    document.documentElement.style.overflow = '';
+                } else {
+                    document.getElementById('authError').style.display = 'block';
+                    document.getElementById('authPassword').value = '';
+                    document.getElementById('authPassword').focus();
+                }
+            });
+        })();
+        
+        // Logo will be inserted here
+        const NICE_LOGO_BASE64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAOfB9ADASIAAhEBAxEB/8QAHQABAAMBAQADAQAAAAAAAAAAAAcICQUGAgMEAf/EAF0QAQABAgMCBgsLCAcGBAUEAwABAgMEBQYHEQgJEiExQRMYN1FWYXV2pbTTFSI2OFVxgZOUsbMUIzJCUpGy0RYzYnJ0gqEXJEOSosJTY4OjJTRzlcFERWXShKTD/8QAGwEBAQACAwEAAAAAAAAAAAAAAAYFBwEDBAL/xAAyEQEAAQMBBAcIAgMBAAAAAAAAAQIDBAUGESExEiJBUXHB0RMyQmGBkaGx4fEjM/AU/9oADAMBAAIRAxEAPwCmQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD+00zVVFNMTMzO6IiOeXptCaIzrV2L5OCt9hwdFW69i7ke8o8UftVeKO/G/d0rA6J0Bp7S1um5hcNGJx0R77F34iqvfz/o9VEc/V9MyzemaFkZ/X92jvnyjt/TE6hrFjD6vOrujz7kJaW2V6rzuKL13DU5Zhqt09kxe+mqY78UdP793zpHyTYpp3C001ZpjcZmNyJ54pmLNuY+aN9X/UlEWmLs5g48danpT8/TklMnXcu9PCrox8vXm83gdBaNwdMU2dOZfVu/8AGtdln99e91rWTZPZp5NrKsBbp71OHoiPufuGXoxrNvhRREeEQxleRdr96qZ+rnYnIMixNPJxOS5bejvXMLRV98OLmWznRWPomLmQYa1M9FWH32pj/lmIerHFzEsXOFdET4xDmjJvW/drmPrKIc/2H5fdpquZHm9/DV8md1rFUxcpmeqOVG6aY+iUY6q0HqfTcVXMfl9VeGp//U2J7Jb+mY56fpiFrCYiYmJjfEsJmbM4d+N9uOhPy5fb03MtjbQZVmd1fWj58/v671LBY3XeyfJc8prxeUU28qx8xv8AzdO6zcnd10x+j89PzzEoE1FkeaafzKvL82wleHv088b+emuP2qZ6Jj5kTqOkZGBP+SN9PfHL+FZg6nYzY6k7p7p5/wAuaAxbIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQtk+zvEapxFOZZlTXYya3VzzHNViKo/Vp8Xfq+iOfo5uyvRl3V+fci7yreW4bdXirsdcdVEeOf8ASN896Js9g8Nh8HhLWEwlmizYs0xRbt0RuppiOiIhU7P6JGVP/ovx1I5R3z6ftO61q840extT1p5z3fy+OX4PC5fg7WDwWHt4fD2qeTbt26d0Uw+8Gw4iIjdCImZmd8gDlwAAAAAAORqzTeVanyqrL81scunnm3cp5q7VX7VM9U/6T1uuPi5bou0zRXG+JfdFdVuqKqZ3TCpuu9JZlpHN5wWOjslmvfOHxFNO6m9T3/FMdcdXjjdLzy3mr9PZfqfI72V5hRE0189u5Eb6rVfVVT4/vjfHWqrqbJcdp/O8TlOYW+TesVbt8fo109VUeKY52tNc0acC506ONE8vl8vRfaRqkZtHRr9+Ofz+fq5oDAMyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2uzrZTtC2h2r17R+l8XmdixVyLl/l0WbUVbt/J7Jcqppmd3VE7+eO+9j2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbI715ojVmhM2pyvVuRYvKcVXTy7dN6Imm5T36K6ZmmqPmmQedAAAAAAAAAAAAAAAAAAAAAAAAB29GaT1JrPOqMm0vk+LzXH1UzV2KxRv5NMdNVUzzUx45mI54BxBM0cFzbtMb/6C+lsF7Y7Vzbt4DelsF7YEMiZu1c27eA3pbBe2O1c27eA3pbBe2BDImbtXNu3gN6WwXtjtXNu3gN6WwXtgQyJm7Vzbt4DelsF7Y7Vzbt4DelsF7YEMiZu1c27eA3pbBe2O1c27eA3pbBe2BDImbtXNu3gN6WwXtjtXNu3gN6WwXtgQyJm7Vzbt4DelsF7Y7Vzbt4DelsF7YEMiZauC7t1ppmqdCzuiN/NmuCmfxkXap09nel87v5LqLK8VlmY2J/OYfEW5pqjvTHfieqY5p6gcsAAAAAAAB92Bw1/G42xg8Lbm5fv3KbduiOmqqZ3RH730pV4Omnqcdn+Jz7EURNrAU8izv3892uOn6Kd//ND2YGJVmZFFmO2fx2/h5czJjFsVXZ7P32Jh0JpzDaW01hsqscmq5THLxFyI/rLk/pT83VHiiHdBt21aptURbojdEcIayuXKrlc11TvmQB2PgAAAAAAAAAARxt20nTnenJzjC24nH5bRNc7o57lnpqp+j9KPp76RyeeN0vNmYtGXZqs18p/7e9GLkV412m7RzhSwen2oafjTetMbl9qjk4aurs2Gj/y6ueI+id9P0PMNQX7NVi5Vbr5xO5s6zdpu24uU8pjeAOp2AAAAAAAAAAAAAAAAAAAAAAAAAPYaB2Ya/wBd3IjSmlcyzG1v3TiIt9jsRPem7XuoifFvB48W20HwJ9QYuIv611Zgsso5VMxhsttTiLlVP60TXVyaaJ6uaK4TxovgvbHNNcm5Vp2vPMRT/wAbNr83/wD245Nv/pBm7k+V5nnOYW8vyjLsXmOMuzut4fC2artyv5qaYmZSbpfg5bZtQ09kw2iMbgrUTumvMa6MJMf5bkxVP0Q0yybKMqyXBUYLJ8swWXYW3G6izhbFNqimO9FNMREP2goZp3gUa8xVFNeeaoyDLIn9SxF3E10/PHJoj90y9/kPAh0xZtf/AB7XOcY2538FhbeGiP8An7ItoAr7p/gg7HMsmJx2FzvOvFjcwmiP/Zi29LhuDTsPw9cVUaDw1Ux/4mNxNcfuquSl0B4LAbF9kuCjdZ2caWq5t357LbV7+OJdC3sx2bW5329nukqJ3bve5Nh4/wCx60B5b/Zvs78AtLf/AGix/wD0fG5sz2cXN3ZNn+k693Rysmw8/wDY9WA8TidkWyrE07ruzfSPTv30ZPYomfpimJcHH8HXYrjZ33tAZbT/APRuXbX8FcJUAQpmHBX2H4qzVRb0jdwlc9FyxmeJ5UfRVcmP9Hj8dwKtmV2uqrC5/qvDb+imcRYrpp+bfa3/AOqzYCmWd8B2rl1V5LtDjk/q2sZlnPHz103Of/leA1DwONrOXTNWW3sgzmj9WMPjJt1/TF2mmI/fLQwBlVqXYhtb07duUZls/wA9mm3Tyq7mEw04q3Ed/l2eVT/qj6uiq3XVRXTNNVM7qqZjdMT3pbLOLqfSWltUYf8AJ9R6dynN7cc8RjMJRd5M9+Jqid0+OAZAjRzWnBK2Q5/Ny7l+BzDT2IriZirLsVM0crqmaLkVRu8VPJ+hBOvOBbrXLYqv6Q1Dlmf2aaJqmziKZwl+av2aYmaqJ+ea6QVZHp9cbP8AWuiMR2DVemMzyrfO6m5esz2Kuf7NyN9FX0TLzAAAAAAAAAAAAAAAAAAAAAAAAAAAA9Ts92ea02gY27g9H6exebXLMRN2q3yaLdvf0cq5XMUUzPVEzz873vaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9sdq5t28BvS2C9sCGRM3aubdvAb0tgvbHaubdvAb0tgvbAhkTN2rm3bwG9LYL2x2rm3bwG9LYL2wIZEzdq5t28BvS2C9s8RtF2Za82eXLFOsdNYvKqb8zFq7VVRctVzHTEXLc1UzPi37weQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABrdsgyLL9NbLtNZLldmm1hsPltnoiI5ddVEVV1z/AGqqpmqfHMvVOTov4HZJ5Psfh0usAAAAAAAAAAAAAAAjPhJ7McNtT2Y43JabdqM3w0Ticqv1bom3fpj9Hf1U1x72fniemISYAxsxeGxGDxd7CYuxdw+IsV1W7tq7RNNduumd001RPPExMTExL6lp+H9srjINVWdo2T4aKMtzq52LMKaKYiLWM3TPL3R1XKYmZ/tU1TM++hVgAAAAAAAAAAAAAAAAAAAAAABoHxeGR4DBbGcbndqzROOzLNLtN69yY5XIt0000Ub+nkxM1T89cs/Gi3AA+L3Y8qYr76QWCAAAAAAAAAAAAAAVR4yHT2WXdn+ntVzYiM0w2aRgKbsc01Wblq5XNNXf3VWomO9yqu/K1ytHGNdxDKfOKx6viAZ/AAAAAAAALRbGcqpynZ5ltO6OyYun8ruT35r56f8Ap5MfQrFg7FeKxdnDWqeVcu3KaKY78zO6Fy8Pat4fD27FqmKbduiKKaY6IiI3RCw2QsRVduXp7IiPv/SX2nvTFui1HbO/7f2+YC9RoAAAAAAAAAAAAACIOEtlNNzKsszujdFdi7OGuc3PNNUcqmd/immf+ZBa0+1/BxjtnGc2+TEzbsxejxciqKpn90Sqw1ttTYi3m9OPiiJ+vLyXmzt6bmJ0Z+GZjzAE2zwAAAAAAAAAAAAAAAAAAAAP7TTVVVFNMTVVM7oiI55lYfYvwUdc60ixmeqOVpTJq91X+8Wt+LvU836Nqd3I3xv99Xu3c08mqAV7w9m9iL9vD4e1cvXrlUUW7dFM1VV1TO6IiI55me8n3ZRwT9pGsKLOOz23b0nldyIqivHUTOJqp39ViN0xPN0VzR1bt662yjY1s+2Z4en+jWR2/wAu5PJuZjipi7irn+eY97HioimOboSCCE9mXBh2VaL7Hib+T/0kzGmJ34nN916jn71nd2OPFM0zMd9NVq3btWqLVqim3bopimmmmN0UxHRER1Q+QAAAAAAAAAAAAAAAAAAAAAAD6sZhsNjcLdwmMw9rE4e7TNFy1doiuiumemJieaY8SD9pnBX2V6wqvYvL8vuaYzG5PK7NlcxTamd27nsT7yI/uRTMz19KdQGcO1bgq7TNF0XsdlWFo1VlduN83stpmb9Mb90cqxPv5nr95y4iOeZ5kD3bddq5Vau0VUV0TNNVNUbppmOmJjvtlkcbWdiWzvaZbquahyWLOYzERTmeBmLOKp+erdMV97dXFURv5twMrhPu2rgta80HTezPJKZ1TkduJqqv4S1MYizT0/nLO+Z3R+1TNUc2+eSgKYmJ3TzSAAAAAAAAAAAAAAAAAAAAAADT/gh5HgMj4PWlacFYt268dhZxuJrpoiKrt25VNU1VT1zEcmmJnqpiOpLKOuDL8X/RHkiz9yRQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEd8JXJsvzzYNrTD5jh6L1GHyfE42zyqd80XbNuq5RVHemKqY+iZSI8Zt27iGvPNvMfVrgMmgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbBaL+B2SeT7H4dLrOTov4HZJ5Psfh0usAAAAAAAAAAAAAAAADg7Q9KZXrjRWa6Uzm3ysFmNibVUxHPbq6aK4/tU1RTVHjiGUOvtL5porWWaaVzm3FvHZbiJs3N3RXHTTXH9mqmaao8Uw18VS4wDZXOdabsbSsmw01Y/KKIs5nTREzN3CzPvbm7v26pnf/AGapmZ3UgooAAAAAAAAAAAAAAAAAAAAAA0W4AHxe7HlTFffSzpaLcAD4vdjypivvpBYIAAAAAAAAAAAAABWjjGu4hlPnFY9XxCy6tHGNdxDKfOKx6viAZ/AAAAAAAA7uz23FzXeQ0TG+PdCxMx81cStsqXs6q5Ovchn/APkLMfvriFtF9sh/ouePkjNp/wDdR4eYAr0wAAAAAAAAAAAAAA5uqrUX9L5rYqjfFzBXqJjd076JhT5cTUlzsWncyuzO7kYS7Vv+aiVO0Jthu9pa8J8ljsvv6FzxjzAEaqQAAAAAAAAAAAAAAAAH9ppqqqimmJqqmd0REc8yD+JC2NbHdbbVc0nD6cwEW8Bbq5OJzPFb6MNY5t+6at0zVV/ZpiZ5437o5068HTglY3NvybUu1K1ewOAndcs5LEzRfvRzTHZpjnt0/wBiPf8Afmndz3VyXK8tyTK8PlWUYDDYDA4ajkWcPh7cUW7dPeiI5gRTsO4PGhNmFNnH28NGd6hojfOaYy3Ezbq/8mjni188b6ueffbuZMQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIO28cGrRO0mMRmuX26NPakr31/luFtx2PEVzMz+etxuiqZmZ31xuq78zu3JxAZNbV9mOsdmWezlWqsrqsRXM/k2Lte/wAPiaYndyrdfX3+TO6qN8b4je8Y2C1dprIdXZDiMi1JlWGzPLsRG65Yv07439VUT001R1VRMTHVKg/CT4Mmd7PIxGo9Jzic60vTvruxMcrE4GOmZuREe+oj9uIjd+tEdMhXUAAAAAAAAAAAAAAAAAAAGqfBl+L/AKI8kWfuSKjrgy/F/wBEeSLP3JFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeM27dxDXnm3mPq1x7N4zbt3ENeebeY+rXAZNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAAAB9OPwmGx+Bv4HG2LeIwuIt1Wr1q5TFVFyiqN1VMxPTExMxufcAyu4RmzXE7LdqGYaf5NyrLLs/lOV3q53zcw1UzyYmd0b6qd00z46d/RMI4aXcMDZVG0vZhevZdh+XqHJIqxeXTTHvrtO785Y/zUxExH7VNPVvZozzTukAAAAAAAAAAAAAAAAAAAABotwAPi92PKmK++lnS0W4AHxe7HlTFffSCwQAAAAAAAAAAAAACtHGNdxDKfOKx6viFl1aOMa7iGU+cVj1fEAz+AAAAAAAB+rKMZXl+bYPH2v6zDX6L1Pz01RMfcuTTMVUxMdExvhSxa/ZhmsZxoPKcZNc13IsRZuzM8/Lo97Mz8+7f9Kz2PvxFdy1PbET9uE/uErtPZmaLdyOzfH3/p6QBdI8AAAAAAAAAAAAAB5vajjPyHZ7nl/fumcJVaif7/ALz/ALlUFgeEfmtOF0nhMqouTTdx2I5VVMdFVu3G+d/+aaP3K/Nc7V34rzIoj4Y/M8f1uXWzdqaMWa5+Kf1w9QBMKAAAAAAAAAAAAAAAB6nZfoHUu0fVmH03pjBTfxNz3127Xvi1h7cdNy5V+rTH75ndERMzEA5ek9O53qvP8LkOnctxGZZliquTasWad8z35meiIjpmZ3REc8y0E4NXBtyLZrasZ/qOMNnOrN3Kpu8nlWMD4rUTHPV/5kxE9URHPv8AabBNjWmNkenowuWURjc4xFERj80u0RFy/PTyaY5+RbieimJ6o3zM86SwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH8qiKqZpqiJiY3TE9b+gKccKnguU3aMXrTZhl8U3KYm7jsjsU7oqj9avD0x19c246efk8+6maX101UV1UV0zTVTO6YmN0xPebLqscLzg4W9VWsXrzQeCot5/RE3cwy61TujHx0zcoiP+N34/X/vfpBQ4fK5RXbuVW7lFVFdMzTVTVG6YmOmJh8QAAAAAAAAAAAAAAAAap8GX4v8AojyRZ+5IqOuDL8X/AER5Is/ckUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4zbt3ENeebeY+rXHs3jNu3cQ155t5j6tcBk0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADYLRfwOyTyfY/DpdZydF/A7JPJ9j8Ol1gAAAAAAAAAAAAAAAAAAGdfDf2Vf0F2jzqXKsPyMh1FXVfoimndTh8V03bfTPNMzy46I99MRG6loo8Xts0Bl+0zZvmmk8dyLdy/R2TB36o3/k+Ip3zbud/dv5p3dNM1R1gybH7s/wApzDIs7xuS5rhq8Lj8Dfrw+ItVxz0V0zumP3w/CAAAAAAAAAAAAAAAAAAA0W4AHxe7HlTFffSzpaLcAD4vdjypivvpBYIAAAAAAAAAAAAABWjjGu4hlPnFY9XxCy6tHGNdxDKfOKx6viAZ/AAAAAAAAJn4Nuf003Mdpu/Xu5f+9YaJnrjdFcfPu5M7vFKGH79PZrisjzvCZtg53XsNciumOqqOiaZ8Uxvj6Xv0zNnCyqL3ZHPw7Xi1DFjKx6rXbPLx7FxB+HIM1wmd5Nhc1wNfLw+JtxXT3479M+OJ3xPjh+5tyiqmumKqZ3xLWlVM0zNM84AH0+QAAAAAAAAAAHk9qmqaNK6UvYm1ciMfiN9nCU9M8uY/S3d6mOf90dbpyL9GPaqu1zwji7bNmq9ci3RzlCW3DPozrXWItWq5qw2Xx+S2+fmmqJ9/P/Nvj/LDwr+zMzMzM75npl/GoMrIqyb1V2rnVO9s/HsU2LVNqnlEADzu4AAAAAAAAAAAAB6PZxozPtf6wwWl9OYScRjcVVz1Tvi3Zoj9K5XP6tFMc8z80RvmYiQ/bsj2d6i2m6xw+m9O4flXKvf4nEVxPYsLaid1Vyue9G/mjpmZiI6WmGxjZhpnZZpK3kWn8PFV2uIrxuOuUx2bF3Ij9KqeqI591Mc1MeOZmfr2HbLdP7KNG2shyajs2JubrmYY+uiIuYu7u/SnvUxvmKaeqO/MzM+8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABUnho8HunOLGK2kaHwNNOZ24m7nGAs07vyqnpm/REf8SOmqP1o5/0onlUdbMKJ8NvYPGm8be2j6Qwcxk+Kub81wlqj3uDu1T/W0xHRbrmeeN3vavFVEUhVMAAAAAAAAAAAAAAAGqfBl+L/AKI8kWfuSKjrgy/F/wBEeSLP3JFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeM27dxDXnm3mPq1x7N4zbt3ENeebeY+rXAZNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAAAAAAAFLuMH2VdjvYfapkuGnkV8jC51TRTzRV+javzujr/AKuqZnp7H35U4bD6nyTLdSadzDIM4w1OJy/MMPXh8Rbn9amqN07p6p64nqmIllNtg0LmWzfaHmuksz5VdWEu78PfmndGIsVc9u5Ec+7fTu3xvndO+OoHkQAAAAAAAAAAAAAAAAAGi3AA+L3Y8qYr76WdLRbgAfF7seVMV99ILBAAAAAAAAAAAAAAK0cY13EMp84rHq+IWXVo4xruIZT5xWPV8QDP4AAAAAAAAAElbENcU6ezKcmzS9FGV4yvfTcrndFi50cqe9TPNE97mnvrExzxvhSxM2xraXRYt2NOaiv8miN1GExdc81MdVFc97vT9ErLZzW4txGLfnh8M93ynyS2u6TNzfkWY49sefqm0I543wLtHAAAAAAAAAPqxuKw2Cwl3F4u/bsWLVM1XLldW6mmI65lxMxEb5cxEzO6HxzHG4XLsBex2NvU2cPYomu5cqnmpiFWtpGrMRq7UVzG1cujB2vzeEszP6FHfnxz0z+7qh2tre0K9qnF1Zdl1ddrJrNfvY6JxFUfr1eLvR9M8/RHzXe0OtRl1ewsz1I5z3z6R/3YuNE0qcan212OtP4j1AEuoQAAAAAAAAAAAAAH7MlyzMM6zfCZRlWEu4zH4y9TZw9i1G+q5XVO6Ij6WmXBl2NZbsk0bTau02cTqPH0015pjKeeN/TFq3M9Fun/AKp3zPVERzwINiH9Eskt7QtT4OKc/wAys/8Aw+xcjnwWGqj9KY6rlcfTFMxHNM1QtAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/PmWCweZZfiMvzDDWsVhMTaqtX7F2iKqLlFUbqqaonmmJidz9ADMPhR7H8Vsm15VYw1Ny7p3MprvZVfq55imJ99Zqn9qjfEb+uJieuYiI2su2jZ7lG07Z/j9LZrTTRVdjsmDxPJ31YXEUxPIuR++YmOumao62WGr9PZrpTU+Y6czzDVYbMcvv1Wb9uY646Jjv0zG6YnriYnrByQAAAAAAAAAAAAAap8GX4v8AojyRZ+5IqOuDL8X/AER5Is/ckUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4zbt3ENeebeY+rXHs3jNu3cQ155t5j6tcBk0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADYLRfwOyTyfY/DpdZydF/A7JPJ9j8Ol1gAAAAAAAAAAAAAAAAAAAAFceHXsr/pls/jWOU4fl53p23VcuRTHvr+D6blPz0c9ceKK4jnlY5/KqaaqZpqpiqmY3TExviYBjQJh4WeyyvZhtQxFrA4eqjT+bcrF5XVETyaImff2d+7dvoqno5/e1UTPSh4AAAAAAAAAAAAAAAABotwAPi92PKmK++lnS0W4AHxe7HlTFffSCwQAAAAAAAAAAAAACtHGNdxDKfOKx6viFl1aOMa7iGU+cVj1fEAz+AAAAAAAAAAABJezTanjdP0WsrzmLmOyyndTRXE77tiPFv/AEqfFPR1Tzbk9ZFnGWZ5gKcdlWMtYrD1frUTz0zu37qo6YnxTzqdP35HnOaZJjYxmU469hL0c01W6uaqO9MdEx4pUul7SXsSIt3o6VH5j18J+7A6joVrJma7fVq/EriCE9Lbbq6Yosaky3snfxOE5p8W+iZ3fTEx8yR8j15pLOYojB53hablXRav1dir397dVu3/AEb1riaxh5Uf4643908J/Pkk8nS8rHnr0Tu744w9KP5RVTXTFVFUVUz0TE74f1k3gAfXiMRYw9ubmIvW7NEc81V1RTEfTLiZiOMkRv5PsHjc92m6NymmYqzWnG3Y/wCHg47LM/5o97/qjLVm2fOcdFeHyLC0ZZZnfHZa5i5enxx+rTzeKfnYnL1zCxY61e+e6OM+n3ZLG0jLyJ4U7o754Ji1hq3I9LYPs2a4umm7VTvtYej312581Pe5umd0eNXjaHr7NtX4nsdyZwmXUVb7WEoq5p/tVz+tV/pHVHTv8tjMVicZia8Ti793EX7k767lyqaqqp8cy+lD6pr9/O30U9Wju7/GfJXadotnD689arv7vAAYFmQAAAAAAAAAAAAABYzgTbGY17q3+l+oMJy9N5LeiabdymeTjMVG6aaO9NFPNVV3/e0zExM7oY2YaMzbaBrnLNJ5LRvxOOuxTVcmJmmzbjnruVf2aad8+Po6ZarbP9KZPofR2W6WyKx2LAZfZi3Rv3cq5PTVXVMRETVVVM1TO7pmQd0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVTh9bJKc805TtLyPCb8yym3FGaU26PfX8L1XJ3dM29/PP7EzvndRC1b68VYsYrDXcLibNu/YvUTbu27lMVU10zG6aZieaYmObcDGsSdwmNmd3ZbtSx2SWqLk5Riv97yu7VvnlWKpn3kz11UTE0z80T1oxAAAAAAAAAAAABqnwZfi/6I8kWfuSKjrgy/F/0R5Is/ckUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4zbt3ENeebeY+rXHs3jNu3cQ155t5j6tcBk0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADYLRfwOyTyfY/DpdZydF/A7JPJ9j8Ol1gAAAAAAAAAAAAAAAAAAAAAARhwmdmNjalsvxuT2rdv3Zwm/FZVdq3RNN+mJ95M9VNcb6Z6ueJ6oZdYmxew2Ju4bE2rlm9armi5buUzTVRVE7piYnniYnqbKKE8PvZZGnNYWdoeUYeKMrz272PHU0xERaxu6Z5X/AKlMTV/eprmZ54BV0AAAAAAAAAAAAAAABotwAPi92PKmK++lnS0W4AHxe7HlTFffSCwQAAAAAAAAAAAAACtHGNdxDKfOKx6viFl1aOMa7iGU+cVj1fEAz+AAAAAAAAAAAAAAAB+rL8yzHLq5ry/H4rCVT0zYvVUTP7pdKNX6riN0alzj7bc/m4Y7aL92iN1NUx9XXVat1Tvqpifo7dWrtVVRuq1JnE//AObc/m5OJxGIxV6b2Jv3b9yemu5XNVU/TL6hxXeuV+9VM/VzTaoo92IgAdb7AAAAAAAAAAAAAAAAAS1wVNmNW0/atg8Bi7U1ZJlu7G5pVMc1VumY5Nr566t1Pf5PKnqBazgKbJ40foWdbZxhuTnmoLUVWYrp99h8Hv30U88b4mud1c8/PHY+iYlZJ/LdFFuim3bppoopiIpppjdERHVD+gAAAAAAAAAAAAAAAAAADnakz7JdN5TdzbP81weV4Czu7JiMVept0Rv6I3z1z1R0yrHtQ4Z2mcs7NgtAZLez3ERExTjsZyrGGieqYo/rK48U8j5wWtcfUOqdMadimdQajyfKOVG+n8uxtuxvjvxy5hmtr7hEbW9ZXL1OM1ZictwdyrfGEyr/AHW3TH7PKp9/VHiqqqRZiL17E367+Iu3L12ud9ddyqaqqp78zPSDTbNeEvsRy7EXMPd1zYvV0Tun8mweIvUz81VFuaZ+iXkM04ZWyTB3Jow2E1PmEb5iK8PgbdNM/WXKZ/0Z6AL+duvsy8HNX/ZsN7d+vLuGbsnxNzkYjL9VYGP272CtVU/9F2qf9OtnwA01y3hPbEMdXbt061pw9de7mxGAxNuKZ8dU2+TH79yRdOa00fqSuKNPaqyPNq5p5XIwWPtXqt3zU1TMMhXyorqt1010VVU1Uzvpqid0xPfBssMstB7eNq+jK7dOU6xx9/C0VRP5Jj6vyqzMR+rEXN80x/dmlZHZhw08rxc2sFtE09Vl1yearMMr33LPTzTVaqma6Y3dMxVXPiBbwcXRuq9N6xyajONL51gs2wNU8nsuGuRVyKt0Tyao6aat0x72qImN/Q7QAAAAAAAAAAAAAAAAAAIS4ZWzKNoeybEYrAYbsue5DysbgeTTvruUbvztmP71MRMR11UUs1GzDMnhebOadnW2PH2cDY7Fk2b78wy+IiIpoprmeyW4iIiIiivlREdVPIBDoAAAAAAAAAAANU+DL8X/AER5Is/ckVHXBl+L/ojyRZ+5IoAAAAAAAAAAAAAAAplxkWcZthMy0dl+EzLF4fCXLOKu3LNq9VRRXXFVuIqqiJ55iJndv6N89+VQfdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWMdPdbNflPG/X1fzPdbNflPG/X1fzBsWhbhebSNPaN2RZ/kuLx1ivOs7y+7gMJgaa4m7MXqJoquTT000U0zVPKnmmYiOmWbvutmvynjfr6v5vy3rty9cqu3rldyurpqqnfM/SD4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAAAAAAAAAB57aRpHK9d6HzXSecUz+SZjYm3NcRvqt1RMTRcjx01RTVHzPQgMgdc6ZzXRursz0xndnsOPy6/VZuxHRVu56aqe/TVTMVRPXEw4q83GBbKvdbIbG0zJsLysbllEWM1pt089zDb/eXZ3RzzRM7pn9me9SoyAAAAAAAAAAAAAAA0W4AHxe7HlTFffSzpaLcAD4vdjypivvpBYIAAAAAAAAAAAAABWjjGu4hlPnFY9XxCy6tHGNdxDKfOKx6viAZ/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANMuB/s0/2c7I8J+XWOx55nXJx+Yb6Ziq3yo/N2Z3xExNFM88dVVVal/BB2df7Q9seAtYzDzdybKN2YZhyqZmiqKJjsduZ6PfV7uaemmK+802AAAAAAAAAAAAAAAAAB9GY4zCZdgMRj8firOEwmGt1Xb9+9XFFFuimN9VVVU80RERvmZB96t/CC4VOm9D14jIdG04fUWoKN9Fy7Fe/B4Srn5qqqf6yqJ3b6aZiOnfVExuQxwn+FDmGrqsXpLZ9iL2X6dmex4jMKYm3iMdHXFPXbtT3uaqqOndEzTNXgem2h691btAzqc21bneJzK/vnsVFdW61Zif1bdEe9oj5o5+ve8yAAAAAAAAAAAO5onV2pdFZ5bzrS2c4vKsdRzdksV7orp3xPJrpn3tdO+I97VExO7oXb4PfCyyXVNzD6e2hxh8jzmvdRZx9PvcJiauaIirf/VVT4/ezunnp5oUIAbMUzFVMVUzExMb4mOsZ98F7hM5loW7hdK63xF/MdLc1uxiJia7+XRv6uuu1G/np55iI970cmb+ZZj8FmmXYfMctxdjGYPE26bti/Zriui5RMb4qpqjmmJjrB+gAAAAAAAAAAAAAAABA3Di2fTrTY1iM2wVibma6bqqx9nk7t9Vjduv0756uRHL3RzzNuITy+N61bv2a7N63RctXKZprorp301RPNMTE9MAxpHuNvGibmzzaxn2luTXGGw2Jm5g6qon3+Hrjl2539e6mqIme/EvDgAAAAAAAAAA1T4Mvxf8ARHkiz9yRUdcGX4v+iPJFn7kigAAAAAAAAAAAAAApJxlvwi0V/hMX/HbVCW94y34RaK/wmL/jtqhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAAAAAAAAAAAH0ZlgsJmWX4nL8fhrWKwmKtVWb9m7TyqLlFUTFVNUT0xMTMbmWPCF2cYrZdtPzHTdcXK8vqn8pyy9Xzzdw1czyN89dVO6aZ8dM9Uw1VQhwyNlf+0jZjcxmW4fsmociivFYHkx769Rujstn/NFMTHXyqIjrkGawAAAAAAAAAAAAADRbgAfF7seVMV99LOlotwAPi92PKmK++kFggAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAD7cHhsTjMVbwuEw93EYi7VFFu1aomuuuqeiIiOeZekzrZ1tAyTCU4zONEaky/D1dF3EZZet0fvmndC1vFwaQye5kmf64v4a3ezW3jfc/DXK6YmcPbi3TXXNHemrskRM96nd1zvuEDGiYmmZiYmJjmmJfxrzqHROjdR34xGoNJ5Fm16I3RcxuX2r1e7vb6qZlHmdcGTYlmuIrxFzRdvC3a+mcJjL9mn6KKa+TH0QDMkaB5vwMNluLrqrwOa6ny6Z6KKMVauUR9FVuav8Aqebx3AeyGuZ/Idf5nY73ZsBRd+6ukFIBcbFcBrFU7/yXaVZuc3N2TJpo5+9zXp/e/De4D+oYpibOvcrrq39FeBuUxu+iqQVHFuqOA9ns0xy9f5bTVu54jL65iP8ArdHC8BqvfvxO0ymI3/o28k37/pm//wDgFNBebA8CHS1G78u1xnN/v9hwtq19/KeoyTgc7I8BPKxtzUObT1xicdTRT/7VFE/6gzxfZYs3sRdi1YtXLtyrooopmqZ+iGoGm+DtsYyC72XB6Dy7EXJjdM4+q5jI/wCW9VVTH0QkHT+ndP6esVWMgyLLMptVfpUYLCUWKZ+eKIjeDKSvZttDoyerOK9C6lpy6mjl1YmrK70W4p/amrk7t3j6HlWzDOTh36RyfSm3DsmS4ejC2s4y63mF+xbpimii9Ny5bqmmIjmirscVT/aqqnrBAQAAAAAAAAAAPabD9FXdoW1TIdJ0019gxmJicXVTVyZow9Ecu7MT1TyKat3jmAXp4DWgI0dsasZzi7EUZpqSqMddqmPfRY3brFHzcmZr/wDUnvJ7fDD2bWHsW7Fi3TbtWqYooopjdFNMRuiI+h8wAAAAAAAAAAAAAAAAfVjcThsFg72Mxl+1h8NYt1Xb127VFNFuimN9VVUzzREREzMs8OFnwgcZtKzS7pnTN67htIYW5u3xvprzGuJ/rK46qIn9Gj/NPPuin1fDg26VZ9mOI2Z6Uxc+5ODu8jN8Tbnd+VXqZ/qYnroomOfv1R3o3zVAAAAAAAAAAAAAAAAABYfgibfcTs5zi1pXU+Jqu6Qxt3dFdUzNWXXKp/rKf/Lmf0qf80c8TFVeAGyti9axFi3fsXaLtq5TFdFdFUVU1UzG+JiY6YmOt81NOAjturqrs7K9VY7fG6fcHE3qu9zzhZn980b+9NMfqQuWAAAAAAAAAAAAAAAACn3GPaIpvZbkG0LCWY7Jh65yzH1RM75t1b67M7ujdFXZYmf7dKlDWjbTpC3rzZZqHStVNubuOwdcYaa45qL9Pv7VX0V00smKqaqappqiaaondMTHPEg/gAAAAAAAAANU+DL8X/RHkiz9yRUdcGX4v+iPJFn7kigAAAAAAAAAAAAAApJxlvwi0V/hMX/HbVCW94y34RaK/wAJi/47aoQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANgtF/A7JPJ9j8Ol1nJ0X8Dsk8n2Pw6XWAAAAAAAAAAAAAAAAAAAAAAAAAABnNw2tlX9AtpNWf5VhpoyDUNdWItRTT72xiN++7a8UTM8umObmqmI/RQA1h25bPcBtO2bZnpXGdjov3aey4DEVR/8viaYnsde/dMxG+Zpq3c801VR1sqs7yzHZLnGMyjM8NXhsdgr9djEWa43VUV0zMVRP0wD8YAAAAAAAAAAADRbgAfF7seVMV99LOlotwAPi92PKmK++kFggAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/L9fq9haBV/i3+5Bn/l+v1ewtAAAAAAAAAAAAAAoJxj3dmyTzetesYhftQTjHu7Nknm9a9YxAKxAAAAAAAAAALncW/ouOx6i2gYm3EzMxlWCmY54/RuXp/1tREx3qoUypiaqoppiZmZ3REdbWDYNpCNCbINNaYqoqoxGFwVNeKirpi/cmbl2PorrqiPFEA9uAAAAAAAAAAAAAAAAr/w0Nsf+zrRUadyLFxRqjO7dVNqaKo5eDw/RXe78TPPTRPf5Ux+juTZq3P8s0tpjMdR5ziIsZfl2HrxF+ud2/k0xv3Rv6apndER1zMR1spdrGt812ia+zTVmbVTF3GXZ7FZ5W+nD2Y5qLdPipjd88756ZkHlQAAAAAAAAAAAAAAAAAAAfdgsVicDjbGNwd+5h8Th7lN2zdt1TTXbrpnfTVTMc8TExExLUDgx7U7G1XZnhs1vXLVOd4Ldhc2s07o5N2I5rkR1U1x76PHyo/VZcpg4Je06vZptXwl/GYmq1kOazTgs0pmZ5FNMz7y9MR10VTv37t/JmuI6QacAAAAAAAAAAAAAAAAMwuF7pL+iG37UWGtUTThcxuxmeH97ujk3/fVRER1Rc7JTH91p6p9xk2lqbmU6W1raimKrN+vK8Rze+qiumbtvn70ci7/AMwKUAAAAAAAAAA1T4Mvxf8ARHkiz9yRUdcGX4v+iPJFn7kigAAAAAAAAAAAAAApJxlvwi0V/hMX/HbVCW94y34RaK/wmL/jtqhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAAAAAAAAAAAAABSnjBtlP5NjLG1TJsPMWsRNGFzqmiOam5zU2r0/3o3UT1b4o66pXWczVeQ5ZqjTWY6eznDxiMvzDD14fEW9+7fTVG7fE9Ux0xPVMRIMeh6va1ojM9nW0DNdJZpvruYK9MWb/ACeTGIszz27sRvndFVO6d2+d0746YeUAAAAAAAAAAAaLcAD4vdjypivvpZ0tFuAB8Xux5UxX30gsEAAAAAAAAAAAAAArRxjXcQynziser4hZdWjjGu4hlPnFY9XxAM/gAAAAAAAAAX44t/uQZ/5fr9XsLQKv8W/3IM/8v1+r2FoAAAAAAAAAAAAAFBOMe7s2Seb1r1jEL9qCcY93Zsk83rXrGIBWIAAAAAAAAAEncFvSP9NNuumcqu2a7uDsYqMdi91O+mLVmOybqu9TVVTTR/nhqUphxbOlaar+qtbXrVfKopt5Xha/1Z37rt6Pn5rP757654AAAAAAAAAAAAAAAObqnO8BpvTeZagzS7FrBZdhrmJv1f2aKZmd3jnduiOuQVG4xDaXu/INl+V4mOeKcdm/IqifHZtVd7/xJif/AC5UydzX2p8x1nrTNtU5tXVVjMyxVd+uJqmqKImfe0RM/q00xFMeKmHDAAAAAAAAAAAAAAAAAAAAAABpbwMtoU682MYG1jcR2XN8jmMuxkzMzVXTTH5q5O/nnlUbomeuqmpNbOrgG65nS22i3kOJu8nL9SWfyOuKrnJppv0767NW7rmZ5VuI/wDN+idFQAAAAAAAAAAAAAAEZcKXTM6s2B6syy3RRViLWCnG2OVTvmK7Exd3U96Ziiaf8yTXwv2rd+zXZvUU3Ldymaa6ao3xVExumJBjUO7tCyGvS+vM+05XTXHuZmN/C08rpmmi5NNM/TERP0uEAAAAAAAADVPgy/F/0R5Is/ckVHXBl+L/AKI8kWfuSKAAAAAAAAAAAAAACknGW/CLRX+Exf8AHbVCW94y34RaK/wmL/jtqhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAAAAAAAAAAAAAAAFbOHfsqnV+g6dbZRh4rzrT1uar8U0++v4PfvrjmjnmiZmuPF2TrmGfTZa5RRct1W7lFNdFUTTVTVG+JiemJhmLwrdltzZftRxOFwdiqnIMz34vKq+eYpomff2d+7dvoq5t3P72aJnpBEYAAAAAAAAADRbgAfF7seVMV99LOlotwAPi92PKmK++kFggAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/AC/X6vYWgVf4t/uQZ/5fr9XsLQAAAAAAAAAAAAAKCcY93Zsk83rXrGIX7UE4x7uzZJ5vWvWMQCsQAAAAAAAAP36eyrF55n+XZJgLc3MXmGKtYWxRH61dyqKaY/fMA0o4G2mo0zwetOUVxEX8zt1ZndmOvs08qj/2+xx9CYX5spwOFyvK8JlmBs02MJhLFFixbpjmooopimmmPFEREP0gAAAAAAAAAAAAAAKvcYdrmcl2c5donB3a6cVn+I7JieTu3fk1mYqmmeuOVcm3u3dMUVR89oWZPDI1hVq/b5ntVFe/CZRVGVYaN+/dFmZiufpuTcn5pgEOgAAAAAAAAAAAAAAAAAAAAAAA/Vk+YYvKc2wea4C7NrF4K/RiLFyP1blFUVUz9ExDXXQ2f4XVWjcm1Lg5p7BmeCtYqmKZ38nl0RVNPzxMzE+OGQDQ/i/tU1Z5sPnJL1dub+QY+7hqaYn33Ybn52iqqP71dymPFQCxIAAAAAAAAAAAAAAAM4uHlp2rI+EHjsfFVM2s7wWHx9ERG7kTFPYaonx8qzNX+ZAi6XGVZDROD0fqe3Z3V03MRgL1zvxMU3LcfRuuz9MqWgAAAAAAAA1T4Mvxf9EeSLP3JFR1wZfi/wCiPJFn7kigAAAAAAAAAAAAAApJxlvwi0V/hMX/AB21QlveMt+EWiv8Ji/47aoQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANgtF/A7JPJ9j8Ol1nJ0X8Dsk8n2Pw6XWAAAAAAAAAAAAAAAAAAAAAAAAAAAAARXwodl9valstxmV4azRVnmBicXlNfNEzepj+q3zMREXI97zzuiZpmf0UqAMar9q7Yv3LF63Vbu26poroqjdNNUTumJjql8FnuHvsrnTOtLe0DKMNycpz67NOMimPe2cbu3zP/AKkRNX96mvvwrCAAAAAAAAA0W4AHxe7HlTFffSzpaLcAD4vdjypivvpBYIAAAAAAAAAAAAABWjjGu4hlPnFY9XxCy6tHGNdxDKfOKx6viAZ/AAAAAAAAAAvxxb/cgz/y/X6vYWgVf4t/uQZ/5fr9XsLQAAAAAAAAAAAAAKCcY93Zsk83rXrGIX7UE4x7uzZJ5vWvWMQCsQAAAAAAACYOBvp+NQcInTFuumZs4C7XmFyY6uw0TVR/7nIj6UPrYcWzktvE661VqCqN9WAy21hae9HZ7k1b/n/Mf6yC9AAAAAAAAAAAAAAAAPN7UdT0aM2c6g1VVTbrqyzAXcRaouVbqblyKZ5FEz/aq5MfSyOvXbl69Xeu1zXcuVTVVVM88zM75loBxhupoyrY3g9O26pi9nmY0U1U9+zZ/OVf9fYv3s/AAAAAAAAAAAAAAAAAAAAAAAAAFpeLi1DGB2m59pu5MRRmuWxeo5+m5Yr5o/5btyfoVaeg2dauzjQetMs1ZkNyijH5fd7JRTciZouUzExVbriJiZpqpmaZ3TE7p5piecGvAqnk/Db0Vcy+1Vm+kNQYbGzH523harN63E+KqqqiZ+mmH7O3Y2ceDGq/qsP7UFoBV/t2NnHgxqv6rD+1O3Y2ceDGq/qsP7UFoBV/t2NnHgxqv6rD+1O3Y2ceDGq/qsP7UFoBV/t2NnHgxqv6rD+1O3Y2ceDGq/qsP7UFoBV/t2NnHgxqv6rD+1O3Y2ceDGq/qsP7UFoBV/t2NnHgxqv6rD+1O3Y2ceDGq/qsP7UFoBV/t2NnHgxqv6rD+1O3Y2ceDGq/qsP7UFoBV/t2NnHgxqv6rD+1O3Y2ceDGq/qsP7UHo+Hzl+HxvB3xuJvbuXgMxwuIs7/25rm1P/TcqZyJ54TvCJx21vDYbIcryy5k+ncNd7PVauXIrvYq7ETFNVcxzU0xEzupjfzzMzM826BgAAAAAAAAap8GX4v+iPJFn7kio64Mvxf9EeSLP3JFAAAAAAAAAAAAAABSTjLfhFor/CYv+O2qEt7xlvwi0V/hMX/HbVCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsFov4HZJ5Psfh0us5Oi/gdknk+x+HS6wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPN7TtHZXr/Qua6Tzin/dsfZmiLkRvqs3I56LlPjpqiJ+jcyi1npzNdI6qzLTWd4ebGYZdiKrF6ndO6Zjoqp3xEzTVG6qJ3c8TE9bYFUfjBdlfujk2H2oZNhonFYCmnDZvTbpjfcsTO63end0zTM8mZ555M09VAKPgAAAAAAANFuAB8Xux5UxX30s6Wi3AA+L3Y8qYr76QWCAAAAAAAAAAAAAAVo4xruIZT5xWPV8QsurRxjXcQynziser4gGfwAAAAAAAAAL8cW/3IM/8v1+r2FoFX+Lf7kGf+X6/V7C0AAAAAAAAAAAAACgnGPd2bJPN616xiF+1BOMe7s2Seb1r1jEArEAAAAAAAAvzxcmU28NsjzvN5scm/js5qt9kmP07dq1b5P0RVXc/fKgzTvgc5bGWcG/SNqbUW679i9ia+bnq7JfuVxM/wCWafoiAS6AAAAAAAAAAAAAAACg/GMainMNq2TadtYqm5ZyjK4uV24/4V+9XM1RPjmiizPzTCr6RuE1ntOo9vms8zoj3kZnXhaJ3/pU2IizE/TFuJ+lHIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANU+DL8X/RHkiz9yRUdcGX4v+iPJFn7kigAAAAAAAAAAAAAApJxlvwi0V/hMX/HbVCW94y34RaK/wAJi/47aoQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANgtF/A7JPJ9j8Ol1nJ0X8Dsk8n2Pw6XWAAAAAAAAAAAAAABHuv9smhtDa8yXRmo8dfw2ZZvRTcs1xZ32bVNdc0UVXK9/vYmqmqN/Pu3b53RzpCUA4x3u35N5t2PWcSsXwMdqn+0XZjRluZ4mbmocgijC4ya5mar1rd+avTM9MzFM0zzzPKomZ/SgE6AAAAAAAAAAAAAAPz5pgcHmmWYrLMww9GJweLs12MRZrjfTct1RNNVM+KYmYfoAZTbf9nWL2X7Tsy0xe5deD3/AJRl16r/AI2GrmeRPzxummfHTLwDSThnbLJ2i7Ma8xyzDzc1BkEV4rBxTEzVetTEdlsxEdMzFMVR18qiIj9KWbYAAAAAADRbgAfF7seVMV99LOlotwAPi92PKmK++kFggAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/L9fq9haBV/i3+5Bn/l+v1ewtAAAAAAAAAAAAAAoJxj3dmyTzetesYhftQTjHu7Nknm9a9YxAKxAAAAAAAANc9lWXU5Rsw0tlVNPJjCZNhLO7d102aYn/WGTGR4C5mmd4HLLW/smLxNuxTu6d9dUUx97YqzbotWqLVumKaKKYppiOqI6IB8gAAAAAAAAAAAAAH5M7zCzlOTY7NMR/U4PD3MRc/u0UzVP+kP1o74S+cxkOwPWmYbuerKruFp8VV+OwxP0TciQZZZhi72Px+Ix2Jq5V/EXartyrv1VTMzP75fQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANU+DL8X/RHkiz9yRUdcGX4v+iPJFn7kigAAAAAAAAAAAAAApJxlvwi0V/hMX/HbVCao7atjGjNrdGXTqiMwtX8u5cYe/gr8W64pr3cqmeVTVExvpiejfG7mnnnfGvaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYnaY7JvlHVf22z7EGfA0H7THZN8o6r+22fYvxZ3wK9nOIy67byjUGpMDjZj81ev3bV+3TP9qiKKZmPmqgFBR6HaPpDN9B62zPSeeUUU47L7vIqqtzvouUzEVUV0z+zVTMTG/n5+fdLzwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANgtF/A7JPJ9j8Ol1nJ0X8Dsk8n2Pw6XWAAAAAAAAAAAAAABQDjHe7fk3m3Y9ZxKJNgO0XF7L9p2W6ns8uvBxP5PmNinpvYauY5dMeON0VR46Y6t6W+Md7t+Tebdj1nEqzA2PyvH4PNMswuZ5dibeKweLs0X8PetzvpuW6oiaaonvTExL9Ko3F97VfdDKb+y/OsTE4rA01YnJ6q6ue5Zmd9yzG/pmmZ5URz+9mroilbkAAAAAAAAAAAAAABnBw1NlcbPtplecZVhot6f1BVXicNFFO6ixe377tmIiN0RvnlUx3qt0foy0feE287O8DtQ2aZlpfExboxVVPZ8vxFcf1GJpieRVv3Tuid801bufk1VAyiH6s3y/G5TmuLyrMcPXhsbg71djEWa499buUTNNVM+OJiX5QAAAAGi3AA+L3Y8qYr76WdLRbgAfF7seVMV99ILBAAAAAAAAAAAAAAK0cY13EMp84rHq+IWXVo4xruIZT5xWPV8QDP4AAAAAAAAAF+OLf7kGf+X6/V7C0Cr/Fv9yDP/L9fq9haAAAAAAAAAAAAABQTjHu7Nknm9a9YxC/agnGPd2bJPN616xiAViAAAAAAAB6/Ylhpxm2XRWGimauyZ/gaZjd1dno3/6b2tLL/ggYKjMOEho6xc/RoxV2/wDTbsXLkf60w1AAAAAAAAAAAAAAAAQNw8s3t5bwdMzwlcxFeaY7C4S3v78XIvTu+izKeVW+MixNNOynTuEmqOVdzyLkR34psXYn+OP3goWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADVPgy/F/0R5Is/ckVHXBl+L/AKI8kWfuSKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADOvjAYiOEFdmIiJnKsNM+P9JXtYTjAfjBXPJOG/wC9XsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGwWi/gdknk+x+HS6zk6L+B2SeT7H4dLrAAAAAAAAAAAAAAAoBxjvdvybzbses4lWZZnjHe7fk3m3Y9ZxKswOvozUWaaS1VlupclxE2Mwy7EU37NUTMRMxPPTVumN9NUb6ZjriZjrat7LdZ5XtA0HlWrcpqjsGPsxVXb376rNyOau3V46aomPHu39EsjVmuAVtU/otrevQWbYnk5RqC7H5JNU+9s43dup+siIo+eKPGC/wAAAAAAAAAAAAAAAKScYNsqjBZnY2pZNhpixjKqMLnNNG+YpvRG61enn5oqpiKJ3bo3009dUqhNg9X6fyvVel8y03nVjs+X5jh6rF+jonk1R0xPVVE7pieqYiWUm1TReabPdfZrpLNomb2BvTTbu8ndTftTz0XKfFVTMT4ueOmAeXAAAAaLcAD4vdjypivvpZ0tFuAB8Xux5UxX30gsEAAAAAAAAAAAAAArRxjXcQynziser4hZdWjjGu4hlPnFY9XxAM/gAAAAAAAAAX44t/uQZ/5fr9XsLQKv8W/3IM/8v1+r2FoAAAAAAAAAAAAAFBOMe7s2Seb1r1jEL9qCcY93Zsk83rXrGIBWIAAAAAAAE1cCGia+ExpeYjfyaMZVPi/3S60uZ0cALCziOELhru6Z/JssxV3mno3xTRz/wDO0XAAAAAAAAAAAAAAAU24zDGVRY0Ll9M+9qqx16uPHEWIp++pclSDjLL3K1To3D7/ANDBYmvdv/aroj/tBUYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGqfBl+L/AKI8kWfuSKjrgy/F/wBEeSLP3JFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABnXxgPxgrnknDf96vawnGA/GCueScN/3q9gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAFAOMd7t+Tebdj1nEqzLM8Y73b8m827HrOJVmAfK1crtXabtquqiuiqKqaqZ3TTMdExL4gNQeC1tQo2pbLcJmOLvUVZ7l+7CZtRG6Jm7Ec13dG7dFce+5o3b+VEfopXZf8Fnajd2XbUcLj8VdqjI8x3YPNbe+d0W5n3t3dv3cqieffzzyZriP0mn1m5bvWqL1qum5brpiqiumd8VRPPExPXAPkAAAAAAAAAAAAAArPw89lUaq0PRrzKMNys50/bn8ppop99fwe/fV0RvmbczNcc8RFM3Ovcsw+N63bvWa7N63Tct10zTXRVG+KonmmJjrgGNIljhTbLrmy3aji8vwtqqMjzHfi8qr6otTPPa38/Pbn3vPzzHJmelE4AADRbgAfF7seVMV99LOlotwAPi92PKmK++kFggAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/AC/X6vYWgVf4t/uQZ/5fr9XsLQAAAAAAAAAAAAAKCcY93Zsk83rXrGIX7UE4x7uzZJ5vWvWMQCsQAAAAAAALK8XPaoubc80rq377Wnb9dO7v/lGHp+6qWgagfFwxH+2nO6t3PGnbsf8A+zh1/AAAAAAAAAAAAAAAFEeMluTO0nTNrdG6nJ6qon571f8AJe5QjjIJn/a/kEb+b3Ao9Yvgq8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADVPgy/F/0R5Is/ckVHXBl+L/ojyRZ+5IoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM6+MB+MFc8k4b/vV7WE4wH4wVzyThv8AvV7AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsFov4HZJ5Psfh0us5Oi/gdknk+x+HS6wAAAAAAAAAAAAAAKAcY73b8m827HrOJVmWZ4x3u35N5t2PWcSrMAAAv8A8AvarOqtEV6DzjEzXnGn7cfktVdW+q/gt+6npnnm3O6jxUzb8agD02y3WmabPteZVq3KKt+IwF6Kq7Uzupv2p5rlurmnmqpmY37ubfvjniAa5Dk6N1DlerNLZbqTJb8X8vzHD037NXXumOeJjqqid8THVMTDrAAAAAAAAAAAAAAAifhTbLre1LZdi8vwtqmc9y7lYvKq+bfVdiOe1vmYjdcj3vPO6J5Mz0Mwr1u5Zu12rtFVu5RVNNdNUbppmOmJjqlsqz/4eeyqdK65o13lGG5OTaguT+UxRT72xjIjfVv5t0RcjfXHPvmqLnVuBWcABotwAPi92PKmK++lnS0W4AHxe7HlTFffSCwQAAAAAAAAAAAAACtHGNdxDKfOKx6viFl1aOMa7iGU+cVj1fEAz+AAAAAAAAABfji3+5Bn/l+v1ewtAq/xb/cgz/y/X6vYWgAAAAAAAAAAAAAUE4x7uzZJ5vWvWMQv2oJxj3dmyTzetesYgFYgAAAAAAAWd4uHuz555u3fWcOv2z/4uSqmnbhm8VVRE1acvxTEz0z+U4ad0fREtAAAAAAAAAAAAAAAAFB+Mg7r+QeQKPWL6/Ch/GR2920/Td3kbuVkvJ5W7p3X7nN/r/qCq4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANU+DL8X/RHkiz9yRUdcGX4v8AojyRZ+5IoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM6+MB+MFc8k4b/vV7WE4wH4wVzyThv+9XsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGwWi/gdknk+x+HS6zk6L+B2SeT7H4dLrAAAAAAAAAAAAAAAoBxjvdvybzbses4lWZZnjHe7fk3m3Y9ZxKswAAAALdcX3tV9z82v7L85xG7C46qrE5RXXVzUX92+5Z+auI5UdW+mrrqXeY4ZVj8ZlWaYXM8uxFzDYzCXqL+HvW53VW7lMxVTVE9+JiJao7Ato+C2o7M8u1PY7Hbxk09gzHD0zH5jE0c1cbt87qZ5qqd87+TVTv594PfAAAAAAAAAAAAAAPMbVNFZXtC0Fmuks2piLOOszTbu8nfVYuxz0XKfHTVET4+eOt6cBj5q/T+aaU1RmOnM6sdgzDLsRVYv0dXKpnpieumY3TE9cTEuUu3xg2yv8ALctw+1LJsNE38HFGFzimiI31WpndbvT35pmYonpndVT1UqSANFuAB8Xux5UxX30s6Wi3AA+L3Y8qYr76QWCAAAAAAAAAAAAAAVo4xruIZT5xWPV8QsurRxjXcQynziser4gGfwAAAAAAAAAL8cW/3IM/8v1+r2FoFX+Lf7kGf+X6/V7C0AAAAAAAAAAAAACgnGPd2bJPN616xiF+1BOMe7s2Seb1r1jEArEAAAAAAACw/F9YiLO3/scxG+/lGJtxvnd0Tbq+n9FoizV4Dl+q1wldOUUzui9axlFXN0x+TXZ++IaVAAAAAAAAAAAAAAAKO8ZVZ5OsdIYj9vL79H/Lcpn/ALl4lMeMxw1UXtB4uI97NOPt1T3pj8nmPvn9wKagAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1T4Mvxf9EeSLP3JFR1wZfi/6I8kWfuSKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADOvjAfjBXPJOG/71e1hOMB+MFc8k4b/AL1ewAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbBaL+B2SeT7H4dLrOTov4HZJ5Psfh0usAAAAAAAAAAAAAACgHGO92/JvNux6ziVZlmeMd7t+Tebdj1nEqzAAAAAJ14GO1X/AGdbTKMszXEzb09n1VGGxc1Ve9sXd+61e8URM8mqf2apn9WEFANmBAvAq2q/7QdmlOTZpieyag0/TRhsRNUzNV+xu3Wr3RzzuiaZ55nfRvn9KE9AAAAAAAAAAAAAAA/Lm+X4LNsqxeV5lh6MTgsZZrsYizX+jct1xNNVM/PEzDKzbxs7x2zDaXmWl8V2SvDUVdmy/EVR/X4aqZ5FXzxummf7VNTV1A3DU2V/7QdmdecZVhZuag0/TXicNFFO+u/Z3b7tnm55ndHKpjv07o/SkGcDRbgAfF7seVMV99LOlotwAPi92PKmK++kFggAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/AC/X6vYWgVf4t/uQZ/5fr9XsLQAAAAAAAAAAAAAKCcY93Zsk83rXrGIX7UE4x7uzZJ5vWvWMQCsQAAAAAAAJg4GV+jD8JbSFdc7oquYm39NWGuxH+sw04ZP7AcbXl+3HRGKonduz7B0Vf3a71NNX+lUtYAAAAAAAAAAAAAAAFVeMlwdFezXTOYTHv7OcVWYnxV2a5n8OFqlfOH/k1WZ8H29jqf8A9pzTDYyfmqmqx996AZ1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1T4Mvxf9EeSLP3JFR1wZfi/6I8kWfuSKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADOvjAfjBXPJOG/71e1hOMBmJ4QV2ImJ3ZVhonxfpK9gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAFAOMd7t+Tebdj1nEqzLM8Y73b8m827HrOJVmAAAAAAB7vYRtDxuzDaXluqcNFdzDUVdhx9in/j4aqY5dPz80VR/appapZNmWBzjKcJm2WYm3isDjLNF/D3qJ303LdURVTVHimJhjkuzxfO1WMXl+I2W51ifz+FirE5NVXVHv7e+Zu2Y3zzzTM8uIjfzTX0RTALfgAAAAAAAAAAAAAAAzb4Z2yuNnW06vMcrw8WtP5/NeKwdNFMRTYu74m7ZiI6IiaommOjk1RHVK0XAA+L3Y8qYr76UlbcNm+VbVNn+K0rmd6cLXVXTewmMpt8urC3qeiuKd8b+aaqZjfG+Kp6J3S+vYPs4sbK9nWF0lZzSvNKrd67fu4qqz2LslddW/mo31cmIjdHTPRv69wPeAAAAAAAAAAAAAAK0cY13EMp84rHq+IWXVo4xruIZT5xWPV8QDP4AAAAAAAAAF+OLf7kGf8Al+v1ewtAq/xb/cgz/wAv1+r2FoAAAAAAAAAAAAAFBOMe7s2Seb1r1jEL9qCcY93Zsk83rXrGIBWIAAAAAAAHX0XmNOT6xyTNq93JwWYWMTO/o3UXKav/AMNgWM7X/Q2YRm2icizWKuVGNy3D4iJ7/Lt01f8A5B2QAAAAAAAAAAAAAEY8KvKLud8HjWeCsxvrt5fOL+ixXTen/S3KTnN1XldOeaWzbJK6oppzDBXsLMz0RFyiaf8A8gx5Hzv2rli/csXqJouW6porpnpiYndMPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADVPgy/F/0R5Is/ckVHXBl+L/ojyRZ+5IoAAAAAAAAAAAAAAI5207Z9GbJbeXf0oqzC5fzGa5w9jBWIuVzTRu5VU75ppiImqI6d87+aJ3TujXtzdk3yfqv7DZ9qjTjLfhFor/CYv+O2qEDQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9qdubsm+T9V/YbPtWe4DQjtzdk3yfqv7DZ9q/DnfDU2cYfLrtzKNP6kx2NiPzVm9atWLdU/2q4rqmI+amfmUFAei2kawzfXutsz1bnldE43MLvLqptxuot0xEU0UUx+zTTERHXzc++XnQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsFov4HZJ5Psfh0us5Oi/gdknk+x+HS6wAAAAAAAAAAAAAAKAcY73b8m827HrOJVmWZ4x3u35N5t2PWcSrMAAAAAAA6mks/wAz0tqbLtRZNiKsPmGXYijEWK4mf0qZ37p79MxviY64mY63LAa37KNa5ZtD0BlWrcqmItY6zE3bW/fNi7HNctz46aomN/XG6Y5ph6ln5wDtqf8ARLXtWh81xHJyfUN2mmxNU+9s43dFNE/+pERRPj5HeloGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArRxjXcQynziser4hZdWjjGu4hlPnFY9XxAM/gAAAAAAAAAX44t/uQZ/5fr9XsLQKv8W/3IM/8v1+r2FoAAAAAAAAAAAAAFBOMe7s2Seb1r1jEL9qCcY93Zsk83rXrGIBWIAAAAAAABqVwVM0rzfg76Lxdyd828ujC9PVZrqsx/pbhlq0N4vbN72YbBruBvVxVTlecYjD2Y/Zoqpt3f4rlYLFgAAAAAAAAAAAAAAAyj4QmQ1aZ23awyeYiKbea3rtqI6rd2ey24/5a6Xg1k+MN05RlW2nCZ7Yw9dFvO8rt3Ltyeiu/ambdW75rcWf3+NWwAAAAAAAAAAAAAAAAAAAAAAAAAH6cqwGNzXNMLleXYa5isbjL1FjD2bcb6rlyuYpppiO/MzEA/MLw6F4FGnKchtV621Pm13NrkRVct5VVbtWbM7ueiJroqmvdO/33vd/ed/tK9lvy7q/7Xh/YAz/GgHaV7Lfl3V/2vD+wO0r2W/Lur/teH9gDP8aAdpXst+XdX/a8P7A7SvZb8u6v+14f2AM/xoB2ley35d1f9rw/sDtK9lvy7q/7Xh/YAz/GgHaV7Lfl3V/2vD+wO0r2W/Lur/teH9gDP8aAdpXst+XdX/a8P7A7SvZb8u6v+14f2AM/xoB2ley35d1f9rw/sDtK9lvy7q/7Xh/YAz/GgHaV7Lfl3V/2vD+wO0r2W/Lur/teH9gDP8Wv4QvBLs6O0hjNWaFznHZhhMtsTex2BzDkTei3Tvmu7RcoimJimOeaZp37omYmeaFUAAAAAAAAAap8GX4v+iPJFn7kio64Mvxf9EeSLP3JFAAAAAAAAAAAAAABSTjLfhFor/CYv+O2qEt7xlvwi0V/hMX/AB21QgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbBaL+B2SeT7H4dLrOTov4HZJ5Psfh0usAAAAAAAAAAAAAACgHGO92/JvNux6ziVZlmeMd7t+Tebdj1nEqzAAAAAAAAA/tNU01RVTMxVE74mJ54ad8FLalRtR2XYbF42/TVn+WbsJmtG+OVVXEe9vbu9XTG/vcqK4joZhpT4MG0+9st2pYPNb9257i43dhM1tRMzE2apjdc3ddVE7qo693Kj9aQaij4Ya9ZxOHt4jD3aL1m7RFdu5RVFVNdMxviYmOaYmOt8wAAAAAAAAAAAAAAAAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/AC/X6vYWgVf4t/uQZ/5fr9XsLQAAAAAAAAAAAAAKCcY93Zsk83rXrGIX7UE4x7uzZJ5vWvWMQCsQAAAAAAAC4nFp5zNOZaz09Xe3xds4bGWbU9XJqrorqj/ntxPzQp2nXgK57TkvCIyrD3LkW7ea4XEYCqZndG+aOyUx9NdqmPnmAaRgAAAAAAAAAAAAAAArDxiumZzPZTlOpbVMzcyTMeRc5uaLN+OTVP8Az0Wo+lQVrbtg0rGt9l+o9K8m1N3McBct4ebv6NN6I5VqqfmrimfoZKV01UV1UVRuqpndMd6QfEAAAAAAAAAAAAAAAAAAAAAAABMPA0yGM/4RWmaLlM1WcDcuY+5u6uxW6qqJ+s5CHluOLZ09F/VWqtU3LNW7B4O1gbNcxzb7tc117vHEWqfoq8YLwAAAAAAAAAAAAAAAA8vtdzC3lOynVuZ3rNN+jDZLi7s2qui5us1TyZ+fo+lke0s4b2eVZLwdM9otXexXsyu2MDRO/nmKrkVVx9NFFcfNvZpgAAAAAAAA1T4Mvxf9EeSLP3JFR1wZfi/6I8kWfuSKAAAAAAAAAAAAAACknGW/CLRX+Exf8dtUJb3jLfhFor/CYv8AjtqhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2C0X8Dsk8n2Pw6XWcnRfwOyTyfY/DpdYAAAAAAAAAAAAAAFAOMd7t+Tebdj1nEqzLM8Y73b8m827HrOJVmAAAAAAAAAABfngD7VZ1No27s/znFTXmuQ24qwVVdUzVewW/dEc//hzMU/3ZoiOiVn2RWzPWGa6B11lWrcmq/wB6y+/FfImfe3aJjk1255p5qqZqp39Mb98c8Q1c0RqXK9YaSyzU+S3uzYDMcPTetVdcb+mme9VTMTTMd+JB2QAAAAAAAAAAAAAAAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/L9fq9haBV/i3+5Bn/l+v1ewtAAAAAAAAAAAAAAoJxj3dmyTzetesYhftQTjHu7Nknm9a9YxAKxAAAAAAAAO9s7z+rSuvcg1LRR2T3LzGxi5o37uXFFyKpp+mImPpcEBsvRVTXRTXTMTTVG+Jjrh/UbcGDUlOqdgukcz7LVdvW8BTg79Vc76puWN9qqZ8c8jlfSkkAAAAAAAAAAAAAABmLwwNG/0M2857Ys24owWaVxmmE3U7o5N6ZmuIjoiIuRcpjxRDTpV/jDdCTnWznL9bYO1VVisgv8AY8Tyd26cLemKZqnrnk3It7t3RFdU/MFBwAAAAAAAAAAAAAAAAAAAAAAAGkPAU0x/R7g/5fjbk19nzzFXsxrpqp3cimZi1REd+JotU1f5md+mcoxeoNSZZkOBiJxWY4u1hLO/o5dyuKY3/TLXjTmU4XIdPZbkeBp5OFy7CWsLZjvUW6Ipp/0iAfvAAAAAAAAAAAAAAABT/jKc/poybSOl7d6JqvYi/j71qOmIopi3bqn5+yXIj5pUnT5w8tRznvCBxuApppi1keCsYCiqmd/LmaZvVTPjiq9NP+VAYAAAAAAAANU+DL8X/RHkiz9yRUdcGX4v+iPJFn7kigAAAAAAAAAAAAAApJxlvwi0V/hMX/HbVCW94y34RaK/wmL/AI7aoQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANgtF/A7JPJ9j8Ol1nJ0X8Dsk8n2Pw6XWAAAAAAAAAAAAAABQDjHe7fk3m3Y9ZxKsyzPGO92/JvNux6ziVZgAAAAAAAAAAFtOL92q+5WeX9mOc4mKcFmNdWIymuurmt4jd7+181cRviP2qZ661S36MtxuLy3McNmOAxF3DYvC3ab1i9aqmmu3cpmJpqpmOiYmIneDZAR7wetpGF2pbMcu1JRNujMKY/J8zsUc0WsTTEcrdG+d1NXNVTz9FUde9IQAAAAAAAAAAAAAAAAAAAAAAAAAACtHGNdxDKfOKx6viFl1aOMa7iGU+cVj1fEAz+AAAAAAAAABfji3+5Bn/l+v1ewtAq/xb/cgz/y/X6vYWgAAAAAAAAAAAAAUE4x7uzZJ5vWvWMQv2oJxj3dmyTzetesYgFYgAAAAAAAAAXj4t3VP5VpPUujr96nl4DF0Y7DUTPvpt3aeTXujvRVbpn56/GtqzP4Furv6J7fsli9dt2sHnNNeVYia4/8AF3Tb3d6ey024+aZaYAAAAAAAAAAAAAAAOdqfJcBqPTuY5BmlmL2BzDDXMNfo79FdM0zu708/NPVLogMhdoWlsx0TrbN9K5rRVTi8txVViqqaJp7JTHPRciP2aqZpqjxVQ4K6fGIbNey4XAbT8rw0cqzycDm/IpiN9Mzus3au/MTPY5nnnntx0QpYAAAAAAAAAAAAAAAAAAAAAACyHF/aIq1Bteu6pxFuucFpzDTdpq3RNNWIuxNFumd/ep7JVzdE00tCEOcD3Z/OgdiuWW8Zh+xZtnH/AMSx0VUzFdM3IjsduqJ54mmjkxMdVXKTGAAAAAAAAAAAAAAA+rGYmxg8JexeJuU2rFi3VcuV1dFNNMb5mfmiH2om4Xeq6dJbANS4mjE0WcXmFmMtwsVdNdV+eRXFPji32Sr/ACgza11ntzU+tc71He5cV5nmF/FzFU75pi5XNUR9ETu+hxQAAAAAAAABqnwZfi/6I8kWfuSKjrgy/F/0R5Is/ckUAAAAAAAAAAAAAAFJOMt+EWiv8Ji/47aoS3vGW/CLRX+Exf8AHbVCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsFov4HZJ5Psfh0us5Oi/gdknk+x+HS6wAAAAAAAAAAAAAAKAcY73b8m827HrOJVmWZ4x3u35N5t2PWcSrMAAAAAAAAAAAACb+BztVnZvtOt4PM8R2PTueTRhcfyp97Zr3/mr3i5Mzumf2aqp6oaUsZ2jPAk2q/wBPdm1On81xHLz/AE9TTh7s1Vb6sRht261d6I54iORPTO+mKpn3wJ/AAAAAAAAAAAAAAAAAAAAAAAAAAVo4xruIZT5xWPV8QsurRxjXcQynziser4gGfwAAAAAAAAAL8cW/3IM/8v1+r2FoFX+Lf7kGf+X6/V7C0AAAAAAAAAAAAACgnGPd2bJPN616xiF+1BOMe7s2Seb1r1jEArEAAAAAAAAAD78BisRgcdYxuEu1WsRh7tN21cp6aK6Z3xMfNMQ1v2Zapwuttn+R6rwlVuaMzwVu/XTbnfTbuTG65R/lriqn56WRK9XF0a3nMdF5xoTF36qr+UX/AMrwdNU9GHuz76mnxU3ImZ/+rALXAAAAAAAAAAAAAAAA52psky3UmnswyDN8PGIy/MMPXh8Rbn9aiqN07p6p64nqndLKbbBoTNNm+0HM9J5pFVVWFucrD35p3RiLFXPbuR88dO7omJjqa1IH4ZGx2NpWhfdjJcLTVqjJaKrmF5NPvsVZ6a7Ez1z01U/2t8c3KmQZvj+1RNNU01RMTE7piep/AAAAAAAAAAAAAAAAAAAEwcEnZpXtJ2t4Kzi8PNzJMpmnHZlVNMzRVTTV7y1M9+urm3dPJiuY6ERWLV3EX7dixaru3blUUUUUUzVVVVM7oiIjpmZ6mnnBX2WW9luzDDYHF2aIz7Md2LzW5ERMxcmPe2t/XTRE7t3PHKmuY/SBLIAAAAAAAAAAAAAAAClnGSat7JjtMaGw96JptUV5pi6I5/fVb7dn5t0Re5v7ULpzMRG+eaGU/CJ1jGu9s+pdRWb9N/B3MXNjBV0RMU1Ye1+bt1RE/tU0xV89Ugj8AAAAAAAAAGqfBl+L/ojyRZ+5IqOuDL8X/RHkiz9yRQAAAAAAAAAAAAAAUk4y34RaK/wmL/jtqhLe8Zb8ItFf4TF/x21QgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbBaL+B2SeT7H4dLrOTov4HZJ5Psfh0usAAAAAAAAAAAAAACgHGO92/JvNux6ziVZlmeMd7t+Tebdj1nEqzAAAAAAAAAAAAAPb7D9oOP2Y7Scs1Xg4ruWbNXYsbh6Z3flGGqmOyUd7fuiJjf0VU0z1PEANjMizTAZ5k2DzjKsTRisDjbFF/D3qJ3xXRVG+J/dL9inXF87VovYa/srzrEz2W1FeKyWqur9Kjnqu2I3z0x+nTER0dk70LigAAAAAAAAAAAAAAAAAAAAAAAAK0cY13EMp84rHq+IWXVo4xruIZT5xWPV8QDP4AAAAAAAAAF+OLf7kGf8Al+v1ewtAq/xb/cgz/wAv1+r2FoAAAAAAAAAAAAAFBOMe7s2Seb1r1jEL9qCcY93Zsk83rXrGIBWIAAAAAAAAABJfBk13GzzbPkee4i9FrLr1z8izGaq5ppjD3d1NVVW7qonk17v7EI0AbMRMTETExMT0TAhzgfbQY19sWy2vFX+yZtk8Rl2O5VW+uqaIjsdyev31HJ556aoq7yYwAAAAAAAAAAAAAAAAUg4cmwu5lmOxe1HSmE34DE18vO8Lbj+ou1T/APMUx+zVM++71U7+iZ3VGbKYrD2MXhbuFxVm3fsXqJt3bVymKqa6ZjdNMxPNMTE7tzPThbcHzF7Oszv6r0th7mI0hirm+qimJqqy2uqf0Ku/bmf0aurfyZ5901BXYAAAAAAAAAAAAAAAAEy8FzYlmW1jVdOIxtq9htKYC7E5ji4972WY54sW56655t8/q0zvnnmmJCUOAbsYnNs0t7UdR4SJy/BXKqcms3aImL9+md0390/q0Tvimf24383I57xvzZVgMFlWWYbLMuw1rC4PC2qbNizbp3U26KY3U0xHeiIfpAAAAAAAAAAAAAAAABGHCl1tOg9iGf5vYv1WcfibP5BgaqZ3VRevb6Yqjx008qv/ACMtlrOMU13Gaa2yrQWCvRVh8ms/lWNimuefE3Y97TVHRvpt7pif/NlVMAAAAAAAAAAGqfBl+L/ojyRZ+5IqOuDL8X/RHkiz9yRQAAAAAAAAAAAAAAUk4y34RaK/wmL/AI7aoS3vGW/CLRX+Exf8dtUIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGwWi/gdknk+x+HS6zk6L+B2SeT7H4dLrAAAAAAAAAAAAAAAoBxjvdvybzbses4lWZZnjHe7fk3m3Y9ZxKswAAAAAAAAAAAAAAOlpfPMy01qLL8/wAnxNWGzDL8RRiMPcjqqpnfz9+J6JjriZhqzsh11lm0fZ7lWrcsmmmnF2t2IsxO+cPfp5rlufmq37p643T0SyUWP4Cm1T+hu0CdG5tiORkuorlNu1NUzybGM6LdXzV81E+PkTM7oBoSAAAAAAAAAAAAAAAAAAAAAAAArRxjXcQynziser4hZdWjjGu4hlPnFY9XxAM/gAAAAAAAAAX44t/uQZ/5fr9XsLQKv8W/3IM/8v1+r2FoAAAAAAAAAAAAAFBOMe7s2Seb1r1jEL9qCcY93Zsk83rXrGIBWIAAAAAAAAAAAE8cCPaN/Qba9ZyrHYjsWT6iinBYjlTEU0Xt89guT81UzT3t1yZnoaQMaKKqqKoroqmmqmd8TE7piWoXBY2lU7TdkuAzPFXorzrARGCzSN/vpvURG65PNH6dO6vm5omao6gSqAAAAAAAAAAAAAAAA+nH4TC4/A38DjsNZxWFxFuq1es3qIrouUVRuqpqpnmmJiZiYl9wChnCh4L2O0tVi9X7O8Nex2Q75uYnLKN9d/Ax11Uddy1H/NTHTviJqirTZhXHhB8FjTeurmIz/R1eH07qGvfXctxRuweLq3dNVNMfm6pndvrpjd0zNMzO8Geo9NtD0Fq3Z/nU5Tq3JMVlt+ZnsVddO+1fiOmq3XHva4546J5uvc8yAAAAAAAAAAAP25JlWZ55mljKsmy/FZjj8RVybOHw1qblyufFTHPK32wHggVxdsZ9tXqpimn39vI8Pd3756uz3KZ6P7FE97fV00gh3g27AdQbV8zt5hjKb+V6Us3P95x807qr+6ee3YiY3VVdU1c9NPXvn3s6MaO01kmkNN4LTuncvtYDLcFb5Fmzb/1qmZ56qpnfM1TzzMzMuhl+CweXYGzgcvwtjCYSxRFuzYs24oot0x0U00xzRHih94AAAAAAAAAAAAAAAADl6uz7AaX0tmmo80ucjBZbhbmKvTExEzTRTM7o39NU7t0R1zMQ6ipPGJ7Q4wOncs2b5ffiL+ZVU47MojdzWKKvzVE/3rkcrqn81HVIKa611DmGrNW5rqXNLk14zMsVcxN3n3xTNU74pjxRG6IjqiIccAAAAAAAAAAAap8GX4v+iPJFn7kio64Mvxf9EeSLP3JFAAAAAAAAAAAAAABSTjLfhFor/CYv+O2qEt7xlvwi0V/hMX/HbVCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsFov4HZJ5Psfh0us5Oi/gdknk+x+HS6wAAAAAAAAAAAAAAKAcY73b8m827HrOJVmWZ4x3u35N5t2PWcSrMAAAAAAAAAAAAAAA/tMzTVFVMzExO+JjqfwBpvwS9qdG0/Zfh7uOxFNeoMp5OEzSmZjlVzEe8vbu9XTHTze+priOhMLLXg0bTr+y3ahgs5uXLk5Pit2FzWzTvnlWKpj38R11UTuqj5pjrlqNhcRYxeFtYrC3rd+xeoi5au26oqprpmN8VRMc0xMc+8H2AAAAAAAAAAAAAAAAAAAAAAK0cY13EMp84rHq+IWXVo4xruIZT5xWPV8QDP4AAAAAAAAAF+OLf7kGf+X6/V7C0Cr/Fv9yDP/L9fq9haAAAAAAAAAAAAABQTjHu7Nknm9a9YxC/agnGPd2bJPN616xiAViAAAAAAAAAAAATPwQNqP8As12qWIzHEdjyDOuTg8y3z723vn81enniI5FU88zv3UVV82/chgBsxExMRMTExPRMCvPAg2sRrrZ9Gls3xXL1Bp61Tama6vfYnCc0W7njmn9Crp6KZmd9SwwAAAAAAAAAAAAAAAAAAObqXIMk1LlF3KNQZVg80wF3dy8PirMXKJmOid09Ex1T0wrDtT4GGnsy7NjtnudXckxExM04DHcq9hpnfzRFz+soj5+WtgAy619wfdrWjK71WYaSxeOwdurdGMyyPyq1VH7W6j39Mf3qaUX3rdyzdqtXbdVu5TO6qmqN0xPemGyriaj0fpPUlUVah0xkub1RTyYqxuBtXpiPFNVMzAMghppmnBg2I4+7cu1aMpw1y5vmZw2PxFuInxUxc5MfNu3PI5hwMdlGJuTXh8z1Vgo6qLWNs1U/9dqZ/wBQZ8i/faUbM/CPV/2jD+xfry/gY7KMNc5eIzLVWNj9m7jbNNP/AEWqZ/1Bny/sRMzuiN8y0wwHBc2H4Sq3V/Q2cRVRunffzHE1b5jvx2TdPzbtyQ9OaB0Npu5bu5Bo/IcsvWo3UXsNl9q3cj/PFPKmfHvBmNorY9tO1lNNWn9F5tiLNXPGIu2uwWZ+a5c5NM/RKxOzTgU4u5ct4vaHqe1ZtxVEzgcojl1VRu6Kr1cRFM7+mIoq5uiV1AHktnGzfROzzL5wekdP4TLuXTFN6/FPKv3t3Ry7lW+qrpnmmd0b53RD1oAAAAAAAAAAAAAAAAAAA/BqHN8vyDIsdnea4inD4HAYevEYi7V0U0UxMzP+nQye2rayzDaBtCzjV2Zb6buYYia7duZiew2o97bt80Rv5NEU07+vdv6ZWy4wrajGEy3CbLsoxH5/FcnF5xNFU76bUTvtWZ/vTHLmOqKaOqpSUAAAAAAAAAAAAGqfBl+L/ojyRZ+5IqOuDL8X/RHkiz9yRQAAAAAAAAAAAAAAUx4yPKM0xWZaNzDC5di7+Et2cVZrvWrVVVFFc1W5imZjomYiZjf07p70qg+5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/ke5eZ/J2M+oq/k2MAY5+5eZ/J2M+oq/k/Ndt3LVyq3doqt108001RumPobKoW4XmzbTustkef53isBYt51kmX3cfhMfTREXYizRNdVuaumqiqmKo5M80TMTHPAM0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbBaL+B2SeT7H4dLrOTov4HZJ5Psfh0usAAAAAAAAAAAAAACgHGO92/JvNux6ziVZlmeMd7t+Tebdj1nEqzAAAAAAAAAAAAAAAAAL6cAPapOodJXtnWcYia8zyS32TL6q5mZu4PfEcn57dUxH92qmIj3sqFvQbOtWZnobW+U6syeuIxmW4iLtNM9FyndNNdE+KqmaqZ8UyDXgcTQep8r1no7K9U5Ld7Jgcyw8Xre/ppnoqon+1TVE0z44l2wAAAAAAAAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/L9fq9haBV/i3+5Bn/l+v1ewtAAAAAAAAAAAAAAoJxj3dmyTzetesYhftQTjHu7Nknm9a9YxAKxAAAAAAAAAAAAAA9Xsl1zmuznX2WasyiqaruEufnrPK3U4izPNctVeKqOvqndPTENVND6nyjWWk8u1PkWI7Pl+YWYu2qublU9U0VREzuqpmJpmOqYmGQCyvAg2zxonVH9B9RYrk6ezm9EYe7cn3uDxU80Tv6qK+amrvTyZ5o5Ug0DAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeX2ra2yrZ3oHNNW5vMVWcFambVnlcmrEXZ5rdqJ3TumqrdG/dO6N8zzRL1DO3htbX41/riNL5HiouabyG7VTTXbq30YvFbt1d3xxTz0U9MfpTE7qgQfrHUOaas1TmWpM6v8AZ8wzHEVX79fRG+Z6IjqpiN0RHVERDkgAAAAAAAAAAAADVPgy/F/0R5Is/ckVHXBl+L/ojyRZ+5IoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxm3buIa8828x9WuPZvGbdu4hrzzbzH1a4DJoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGwWi/gdknk+x+HS6zk6L+B2SeT7H4dLrAAAAAAAAAAAAAAAoBxjvdvybzbses4lWZZnjHe7fk3m3Y9ZxKswAAAAAAAAAAAAAAAAAALXcX/tVjJdR39muc4rk4DNq5vZXVcq3RaxW731vn6rkRG6P2qYiI31L1MbsBi8VgMdh8fgcRdw2Kw12m7YvWqpprt10zvpqpmOeJiYiYlqVwc9pWG2pbMMBqDlW6cztR+TZpZo5ux4imI5UxHVTVExVHiq3dMSCRwAAAAAAAAAAAAAAAAAAAFaOMa7iGU+cVj1fELLq0cY13EMp84rHq+IBn8AAAAAAAAAC/HFv9yDP/L9fq9haBV/i3+5Bn/l+v1ewtAAAAAAAAAAAAAAoJxj3dmyTzetesYhftQTjHu7Nknm9a9YxAKxAAAAAAAAAAAAAAAAv/wACXbf/AE0yGjQep8ZytR5Za/3S9cn32Ow1Mc3P13KI5p65p3Vc8xVKzLHXIM3zLIM7wedZPjLmDzDBXqb2Hv2/0rddM74nn5p+aeaetprwa9sWWbXNGU4r81hc/wADTTbzTBU80U1T0XKInn7HVund3p3xPRvkJVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABH23vajk+yjQd/P8w5GIx13fZy3A8vdVir27mjxUU9NVXVHjmIkIu4bm2iNEaWq0Tp7F8nUecWZi/ct1e+wWFnmqq8VdfPTT3o5U80xTvz5dbV+os41ZqbH6jz7GV4zMsfem7fu1dc9URHRFMRERERzREREdDkgAAAAAAAAAAAAAA1T4Mvxf8ARHkiz9yRUdcGX4v+iPJFn7kigAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPGbdu4hrzzbzH1a49m8Zt27iGvPNvMfVrgMmgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbBaL+B2SeT7H4dLrOTov4HZJ5Psfh0usAAAAAAAAAAAAAACgHGO92/JvNux6ziVZlmeMd7t+Tebdj1nEqzAAAAAAAAAAAAAAAAAAAJq4IG1Wdme061azHE9j07nXJwuYxVPvbU7/wA3f/yTMxP9mqrxIVAbMCvPAd2q/wBOdnMaYzbEcvPdO0U2Zmqr32IwvRaudHTT+hPT+jTMzvqWGAAAAAAAAAAAAAAAAAAAVo4xruIZT5xWPV8QsurRxjXcQynziser4gGfwAAAAAAAAAL8cW/3IM/8v1+r2FoFX+Lf7kGf+X6/V7C0AAAAAAAAAAAAACgnGPd2bJPN616xiF+1BOMe7s2Seb1r1jEArEAAAAAAAAAAAAAAAA9Ls01tn+z3WOC1RpzFTYxmGq3VUTv7Hftz+lauR+tTVHV1c0xumImPNANX9ie07T21XRlnUGR19ivU7reOwVdUTcwl7dz0T34nppq/WjvTviPcsmdj+0bUOzHWWH1Hp+/O+mYoxeFqq3WsXZ389uuPunpid0w0w2NbTNN7UtIWtQafv8muN1GMwdyqOy4S7u56Ko73eq6Jj6YgPbAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5GsdS5JpHTeM1DqHH2sDluDo5d69XP7oiOmapnmiI55mQfn2g6vyLQmksdqfUeLjDYDB0b53c9dyqf0bdEddVU80R+/dG+WYW3Hafnu1XW9/UGb1Taw1G+1l+CpnfRhbO/mpjv1T01Vdc96IiI7nCT20Zttd1Z2bdewWncFVNOWYCqqN9MdE3bm7mm5V9MUxzRM88zE4AAAAAAAAAAAAAAAANU+DL8X/RHkiz9yRUdcGX4v8AojyRZ+5IoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxm3buIa8828x9WuPZvGbdu4hrzzbzH1a4DJoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGwWi/gdknk+x+HS6zk6L+B2SeT7H4dLrAAAAAAAAAAAAAAAoBxjvdvybzbses4lWZZnjHe7fk3m3Y9ZxKswAAAAAAAAAAAAAAAAAAAAPZ7FtfZjs02jZXqzAcqujD3ORi7ETu/KMPVzXLfe3zHPG/oqimepqtp3N8v1BkWBzzKcTRicBj7FGIw92noqoqjfE+Kefo6mOy53F8bVuVTiNledYnnjl4rJKq56ueq9YjfP/qUxEf8Aib56AXKAAAAAAAAAAAAAAAAAAVo4xruIZT5xWPV8QsurRxjXcQynziser4gGfwAAAAAAAAAL8cW/3IM/8v1+r2FoFX+Lf7kGf+X6/V7C0AAAAAAAAAAAAACgnGPd2bJPN616xiF+1BOMe7s2Seb1r1jEArEAAAAAAAAAAAAAAAAAA9Zsq2g6l2a6tsak0zi+xYij3l6zXvm1ibe/nt3Keumf3xO6YmJiJeTAaobB9sWmNrenIx2U3Iwma2KI/L8ru1xN3D1dG+Ojl25noriOvdMRO+Ikhj9pDUmeaR1Bhc/05mV/LsywtXKtXrVW6fHEx0VUz0TTO+JjpaDcGzhIZDtNs2Mhz7sGTasind2DlbrONmI56rMz0T0z2OZmY6pq59wT2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwu2XappPZXpyc11JjInEXYqjBYC1MTfxdcdVNPVEb431TzRv78xEh39c6s0/onTWK1FqbMrWAy7DR765XPPXV1UUU9NVU9VMc8s3OEdtvz7a7n8RX2TL9OYO5M5flsVdfR2W7u5qrkx9FMTMR0zM8bbfta1TtY1LVmee4ibOBs1TGAy21VPYcLRPe/arn9aueefFERER8AAAAAAAAAAAAAAAAAADVPgy/F/wBEeSLP3JFR1wZfi/6I8kWfuSKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8Zt27iGvPNvMfVrj2bxm3buIa8828x9WuAyaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsFov4HZJ5Psfh0us5Oi/gdknk+x+HS6wAAAAAAAAAAAAAAKAcY73b8m827HrOJVmWZ4x3u35N5t2PWcSrMAAAAAAAAAAAAAAAAAAAAA6GnM5zHT2f4HPcoxNWGx+Av0YjD3af1a6Z3x88d+OuHPAa0bGteZdtK2dZXq3LoptzirfJxViKt84e/TzXLc/NPRPXExPW9gzw4DW1X+hG0T+iubYjkZFqKumzE1TupsYvot19HRV+hPR00zM7qWh4AAAAAAAAAAAAAAAACtHGNdxDKfOKx6viFl1aOMa7iGU+cVj1fEAz+AAAAAAAAABfji3+5Bn/l+v1ewtAq/xb/cgz/y/X6vYWgAAAAAAAAAAAAAUE4x7uzZJ5vWvWMQv2oJxj3dmyTzetesYgFYgAAAAAAAAAAAAAAAAAAAHyt11266a7dVVFdM76aqZ3TE9+HxAW44OvC1xmV/k2mtqVy9jcDG63ZzumJrv2eiI7PTHPcp3frx77m54q374urkuaZbnWV4fNMox2Hx+BxNEV2cRh7kV27lPfiY5pY5JD2M7YtbbKsz7PpzMIu4C5VysTlmK314a9zbt/J3xNNXR76mYnmjfvjmBqqIc2HcInQm0+mzl9OIjI9Q1xunLMZciJuVf+TXzRc+bmq5p97u50xgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADze0LXWlNAZHVnOrM5w2W4bni3Fc77l6qP1bdEe+rnn6Iid3TO6FHNv3Cs1NrWnEZHoqMRpvIK99Nd6K92NxVP9qqmfzdM/s0zv6YmqYncCwXCK4TunNntGIyHS1WHz7VEb6Kqaat+GwVW7pu1R+lVz/oUz1Typp66Da11VqDWeosTqDU2aX8yzHETvru3Z6I6qaYjmppjqpiIiHFnnnfIAAAAAAAAAAAAAAAAAAAADVPgy/F/0R5Is/ckVHXBl+L/ojyRZ+5IoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxm3buIa8828x9WuPZvGbdu4hrzzbzH1a4DJoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGwWi/gdknk+x+HS6zyuyHPcv1Lsv01nWV3qbuGxGW2d26YmaKqaIpron+1TVE0z44l6oAAAAAAAAAAAAAAFAOMd7t+Tebdj1nEqzLA8PrUOXZ9t7qw+X3qL3uPldnLsRXRVFVPZYruXao3x109limY6ppmOpX4AAAAAAAAAAAAAAAAAAAAAAH9iZiYmJmJjomGmPBE2q07TdmFmnMMRFeocminCZlEz767zfm7/Tv9/THPP7VNfVuZmpK4N+0zEbLNp+Bz6qq5VlV+fybNLNO+eXh6pjfVEddVM7qo8cbuuQanD6cDisNjsFYxuCxFrE4XEW6btm9ariqi5RVG+KqZjmmJid+99wAAAAAAAAAAAAAACtHGNdxDKfOKx6viFl1UuMh1BllrZ9p7S03onM8TmkY+m1HPNNm3auUTVPe31XaYjv7qu9IKKAAAAAAAAAAvxxb/cgz/y/X6vYWgVM4trPMur0TqbTcX6YzGzmUY6bUzumqzXbooiqO/EVW5ie9vp78LZgAAAAAAAAAAAAKCcY93Zsk83rXrGIX7Z58YRnWW5rtzw+EwGJpv3cryizhMZyei3em5ducjf1zFNyiZ3dG/d0xIK5gAAAAAAAAAAAAAAAAAAAAAAA/tNVVNUVU1TTVE74mJ3TErC7GOFbrvRUWMs1LytV5NRupiMTd3YuzT/Zu8/KiO9XE96JpV5Aar7Kdsuz3aXh6P6NZ7b/AC6ad9eXYvdZxVH+SZ9989E1R40gsa8PevYbEW8Rh7tyzetVRXbuW6ppqoqid8TExzxMT1p92U8LDaRo+izgc9uW9WZZbiKYox1c04mmnf8Aq343zM+OuK+roBouIU2ZcJzZVrXseGvZx/RzMaonfhs33Waeb9m9v7HPiiaoqnvJptXKLtum7arproriKqaqZ3xVE9ExPeB8gAAAAAAAAAAAAAAAAAAAAAB4zaJtT2f7P7NVWq9UYDA343f7pFfZcTO/omLVG+vd4927xqu7UeGni79F3BbOdPfkkTE0xmOaxFVyPHRZpmaYnriaqqvHSC4epc/yTTOUXc31BmuDyvAWY9/fxV2LdEeLfPTM9URzz1Ko7Z+GVgsNF7Ktl+Xfld3npnN8fbmm1TO/ptWZ56ubomvk7p/VlUbXGs9Va3zerNdV57jc2xUzVNM37m+i1yp3zFuiPe0U/wBmmIjxOADs6w1RqHV+dXM51NnGLzXH3Oab2IucqYj9mmOimnvUxERDjAAAAAAAAAAAAAAAAAAAAAAADVPgy/F/0R5Is/ckVE3BDzzAZ5wetK1YK/buV4LC/kWJopriarV23VNM01R1TMcmrdPVVE9aWQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHjNu3cQ155t5j6tcezR5wlM5y/JNg2tMRmOIos0YjJsTg7PKq3TXdvWqrdFMd+Zqqj6N4MqgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAe12c7V9oWzyzesaP1Ri8sw9+rl3LHIt3rU1dHK5FymqmJ8cRvndHeex7aPbt4c+icF7FDICZu2j27eHPonBexO2j27eHPonBexQyAmbto9u3hz6JwXsTto9u3hz6JwXsUMgJm7aPbt4c+icF7E7aPbt4c+icF7FDICZu2j27eHPonBexO2j27eHPonBexQyAmbto9u3hz6JwXsTto9u3hz6JwXsUMgJm7aPbt4c+icF7E7aPbt4c+icF7FDICZu2j27eHPonBexfmzPhLbb8xwN3B4jXmIptXaZpqmxgcNYr3T3q7dumqmfHEwiIB87ty5eu13btdVy5XVNVddU75qmemZnrl8AAAAAAAAAAAAAAAAAAAAAAAAABIug9t+1TQ2T05PpnWGKweX0TM28PdsWcRRb39MURdoq5Mde6N0dL0PbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEy1cKLbrVTMTrqd0xu5sqwUf8A/FF+qtRZ5qrPL+d6jzTFZnmN+fzl/EV8qqYjoiOqIjqiN0R1OUAAAAAAAAAAA6mldRZ5pbO7Gd6dzXFZXmNifzeIw9yaaoiemJ78T1xO+J60o08KLbrTTFMa6ndEbufKsFM/goaATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZAS/j+EztxxuEuYW9ry/TbuUzTVNnAYWzXEeKui1FUT44mESYm/exOIuYnE3rl69drmu5cuVTVVXVM75mZnnmZnrfWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZ6A2pbQdB1x/RXVeY5fZid84blxcsT89quJo+ndveMAW70Fw2c6w0RY1xpLCZhTyqY/KsruTYrpp65m3Xyorq6+aqiE86K4TexzU8RRGp4yXET/wc3tTh93+fnt/9TMsBsflmYYDNMHbxmWY7DY3DXI5VF7D3ablFUd+KqZmJfpY75Dnec5BmFOY5Fm2PyrGURMU4jB4iuzciJ6Y5VMxKUNLcJfbPp+3TZt6xvZjZid/IzKxbxMz89dUcv8A6gacCimn+G3rHD0U057o3JMwmOmrC3ruGmf+bskPf5Lw3NF3sNTVnOjdQYO/+tRhLlnEUx81VVVuZ/cC1ggjIeFpsWzKzFeLzrMcnrmN/Y8blt2qr5t9mK4/1ehwPCM2KY25FFnX+X0zP/jWb1qP310RAJWHicHtd2V4umKrO0fSU7+imvN7FFXRv6Kqol+yjaTs6rp5VGvtK1R34zjDzH8YPVDy/wDtG2e+Hel//u9j/wDu+u7tN2bWpmLu0HSVG6N88rOcPHN/zg9YPBY7bRslwcb720fS1X/0cytXf4JlwcVwlNiGHqmm5r3CVTHT2PCYi5H76bcglsQHn/C52M5ZTvweZZtnU/s4LLq6Z/8Ae7HDx+dcNzRdrDzVk2jdQYy91UYu5Zw9M/5qark/6AtYKM57w3tV3rdUZJojJsDVPRVi8TcxO76Kexo41JwpdtGdW7lmnU1rK7NzmmjAYO3bmPmrmJrj6KgaV3K6LdE13K6aKY6ZqndEI31jt42SaVouRmeuMqu3rczTNjA3Pyq7yv2ZptcrdPz7mZmqNXaq1Tct16l1LnGc1Wv6v8uxly9FH92Kpnd9DiAu/rrhs5Hh6btjRWkcZj7nImKMVmd2LFumrv8AY6OVVVT/AJqJV/2g8JLa5rKLlm/qSrJ8Fcp5M4XKKPyand1+/iZuTv64muY8SIAHzvXLl67VdvXKrlyuZqqrqnfNUz0zM9b4AAAAAAAAAAAAAAAAAAAAAAAAAAAD1WzzaJrXZ9jb2L0dqHF5TXfiIvUUcmu3c3dE1W64miqY6pmN8b5773nbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9idtHt28OfROC9ihkBM3bR7dvDn0TgvYnbR7dvDn0TgvYoZATN20e3bw59E4L2J20e3bw59E4L2KGQEzdtHt28OfROC9i8TtG2na82h12J1jqXF5pRh5mbVqqmi1aomemqLdummnf492948AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//9k=";
+        if (CONFIG.showBrandInHeader) {
+            document.getElementById('headerLogo').src = 'data:image/png;base64,' + NICE_LOGO_BASE64;
+            document.getElementById('headerLogo').style.display = 'block';
+        }
+        
+        // Prompt templates (simplified - no file generation instructions)
+        const FORMATTING_INSTRUCTIONS = `
+
+---
+
+### FORMATTING INSTRUCTIONS (IMPORTANT — follow these exactly):
+
+Structure your entire response using **Markdown formatting** so it is ready for professional document export:
+
+1. **Section Headers**: Use \`##\` for each major numbered section (e.g., \`## 1. COMPANY OVERVIEW & MARKET POSITION\`)
+2. **Sub-headers**: Use \`###\` for any sub-sections within a major section
+3. **Key findings**: Use **bold** for company names, product names, dollar amounts, percentages, and critical insights
+4. **Lists**: Use bullet points (\`-\`) for all list items. Indent sub-bullets with two spaces.
+5. **Data callouts**: When citing a specific statistic or metric, format as: **Metric Name:** value
+6. **Tables**: Where comparison data exists (e.g., competitors, feature comparisons, KPIs), use Markdown tables with | Column | Header | format
+7. **Section dividers**: Use \`---\` between each major numbered section
+8. **Sources**: At the end of each section where you cite data, include source references formatted as: *Source: [Name](URL)*
+9. **Executive Summary**: Begin with a \`## Executive Summary\` section (3-5 bullet points highlighting the most critical findings) before the numbered sections
+10. **Tone**: Professional, data-driven, scannable. Write for a Solutions Engineer preparing for a customer engagement — every insight should be actionable.
+
+Do NOT use code blocks for general content. Do NOT wrap the entire response in a single code block. Use clean, readable Markdown throughout.`;
+        
+        const promptTemplates = {
+            "1A": `I'm a Solutions Engineer at NICE preparing for a discovery call with {{companyName}}, a company in the {{industry}} industry.
+
+Conduct comprehensive research and provide detailed analysis on:
+
+1. TOP 5 CUSTOMER EXPERIENCE CHALLENGES - {{industry}} Industry
+   - Specific challenge description
+   - Impact on contact center operations
+   - Statistical data or recent survey findings
+   - Industry examples or case studies
+   - Timeline/urgency of each challenge
+
+2. CONTACT CENTER PAIN POINTS - {{industry}} Specific
+   - Operational inefficiencies
+   - Technology gaps
+   - Workforce/staffing challenges
+   - Customer satisfaction issues
+   - Compliance or regulatory pressures
+   - Cost/budget constraints
+
+3. RECENT INDUSTRY TRENDS & REGULATORY CHANGES
+   - Major trends affecting customer service (last 12-18 months)
+   - Regulatory changes impacting contact centers
+   - Adoption of new technologies (AI, automation, omnichannel)
+   - Shift in customer expectations
+   - Industry consolidation or market dynamics
+
+4. TECHNOLOGY STACK ANALYSIS
+   - Common CRM platforms used
+   - Contact center platforms (CCaaS, on-premise)
+   - Customer engagement tools
+   - Analytics and reporting systems
+   - Integration points and middleware
+   - Cloud vs on-premise preferences
+
+5. KEY PERFORMANCE METRICS
+   - Primary KPIs for {{industry}} contact centers
+   - Industry benchmarks and standards
+   - Emerging metrics gaining importance
+   - How NICE products align with these metrics
+
+6. COMPETITIVE LANDSCAPE
+   - Major contact center vendors in {{industry}}
+   - NICE's position and differentiation
+   - Common competitive battlegrounds
+
+Format: Comprehensive, data-rich report with statistics, examples, and actionable insights. Tone: {{tone}}. Suitable for thorough pre-call preparation.` + FORMATTING_INSTRUCTIONS,
+            
+            "1B": `Conduct deep research on {{companyName}} and provide a comprehensive, data-rich pre-sales intelligence brief:
+
+1. COMPANY OVERVIEW & MARKET POSITION
+   - Full legal name and headquarters location
+   - Industry classification and market segment
+   - Annual revenue (latest available year)
+   - Employee count (total and contact center staff if available)
+   - Geographic presence (countries, major office locations)
+   - Market position (rank, market share if available)
+   - Ownership structure (public/private, parent company, subsidiaries)
+   - Stock symbol and recent stock performance (if public)
+
+2. RECENT COMPANY NEWS & INITIATIVES (Last 12-18 months)
+   - Major announcements or press releases
+   - Mergers, acquisitions, or partnerships
+   - Leadership changes (CEO, CIO, CX executives)
+   - Digital transformation initiatives
+   - Customer experience programs or investments
+   - Expansion plans or restructuring
+   - Awards or recognition received
+
+3. CUSTOMER EXPERIENCE & CONTACT CENTER CHALLENGES
+   - Known customer service issues (from reviews, news, social media)
+   - Customer satisfaction scores or NPS (if public)
+   - Contact center size and structure
+   - Peak season challenges or capacity issues
+   - Omnichannel maturity level
+   - Self-service and automation current state
+   - Agent experience and retention issues
+
+4. TECHNOLOGY ENVIRONMENT & INFRASTRUCTURE
+   - Current contact center platform (vendor, if known)
+   - CRM system in use
+   - Other customer engagement tools
+   - Recent technology investments or modernization projects
+   - Cloud vs on-premise strategy
+   - Known technology partnerships
+   - IT infrastructure preferences
+   - Security/compliance requirements
+
+5. COMPETITIVE INTELLIGENCE
+   - Main competitors and how they compare on CX
+   - Competitive advantages in customer service
+   - Areas where competitors excel
+   - Customer service differentiators
+
+6. DECISION MAKERS & ORGANIZATIONAL STRUCTURE
+   - CEO and executive team members
+   - CX/Customer Service leadership
+   - IT/Technology leadership
+   - Operations leadership
+   - Procurement/Vendor management contacts (if available)
+   - Organizational reporting structure
+
+7. FINANCIAL & BUYING SIGNALS
+   - Recent financial performance trends
+   - Budget cycle and fiscal year
+   - Capital expenditure announcements
+   - Technology budget indicators
+   - Job postings related to CX or contact centers
+   - Vendor selection activity or RFPs
+   - Contract expiration timelines (if public)
+
+8. SALES INTELLIGENCE & APPROACH RECOMMENDATIONS
+   - Best angle for initial outreach
+   - Likely pain points based on profile
+   - Potential budget and decision timeline
+   - Key stakeholders to target
+   - Competitive threats to be aware of
+
+Provide specific, verified facts with sources where possible. Include URLs to key information sources.` + FORMATTING_INSTRUCTIONS,
+            
+            "1C": `I'm meeting with {{companyName}}, a {{industry}} company with {{approxSize}}.
+
+Develop a comprehensive pain point hypothesis framework for contact center operations:
+
+PART 1: OPERATIONAL CHALLENGES ANALYSIS
+For each of 5 likely operational challenges (not just 3):
+- Challenge name and description
+- Why this is common for {{industry}} companies of this size
+- Statistical prevalence (if available)
+- Impact on business metrics (cost, satisfaction, efficiency)
+- Current vs desired state
+- Discovery questions to validate (3-5 specific questions)
+- Evidence to look for during discovery
+- NICE solution approach with specific products/capabilities
+
+PART 2: CUSTOMER EXPERIENCE PAIN POINTS
+Detailed analysis of CX challenges typical for this profile:
+- Customer journey pain points
+- Channel-specific issues
+- Self-service and automation gaps
+- Response time and resolution challenges
+- Customer satisfaction impact
+- Comparison to industry benchmarks
+
+PART 3: WORKFORCE MANAGEMENT ISSUES
+Comprehensive workforce analysis:
+- Staffing and capacity planning challenges
+- Agent productivity and performance issues
+- Training and onboarding gaps
+- Scheduling and forecasting problems
+- Attrition and retention concerns
+- Agent experience and engagement
+- Skill-based routing needs
+- WFM technology gaps
+
+PART 4: TECHNOLOGY LIMITATIONS
+In-depth technology assessment:
+- Legacy system constraints
+- Integration challenges and data silos
+- Scalability and flexibility limitations
+- Omnichannel capability gaps
+- Analytics and reporting deficiencies
+- AI and automation opportunities
+- Cloud migration considerations
+- Security and compliance requirements
+
+PART 5: BUSINESS OUTCOMES & STRATEGIC GOALS
+What they're likely trying to achieve:
+- Cost reduction targets
+- Customer satisfaction improvements
+- Operational efficiency gains
+- Revenue growth through better CX
+- Competitive differentiation
+- Digital transformation goals
+- Employee experience improvements
+
+PART 6: NICE VALUE PROPOSITION
+For each pain point area:
+- Specific NICE products that address it
+- Key differentiators vs competitors
+- ROI and business case elements
+- Implementation considerations
+- Success metrics to track
+
+Include industry statistics, benchmarks, and case study references where applicable.` + FORMATTING_INSTRUCTIONS,
+            
+            "2A": `Create an exhaustive competitive comparison between NICE {{niceProduct}} and {{competitorProduct}}.
+
+PART 1: PRODUCT OVERVIEW & POSITIONING
+NICE {{niceProduct}}:
+- Full product name and version
+- Core value proposition
+- Target market segments
+- Ideal customer profile (company size, industry, use cases)
+- Deployment options and architecture
+- Pricing model overview
+- Market position and customer base size
+
+{{competitorProduct}}:
+- Same detailed analysis as above
+
+PART 2: COMPREHENSIVE FEATURE COMPARISON
+Create detailed comparison tables for:
+
+A. OMNICHANNEL CAPABILITIES
+- Voice (inbound, outbound, blended)
+- Digital channels (email, chat, SMS, social media, messaging apps)
+- Video support
+- Co-browsing and screen sharing
+- Channel routing and queueing
+- Unified agent desktop
+- Channel analytics
+
+B. AI & AUTOMATION
+- Conversational AI/chatbots
+- Virtual assistants
+- Intelligent routing
+- Sentiment analysis
+- Speech analytics
+- Predictive analytics
+- Robotic process automation (RPA)
+- Agent assist/guidance
+
+C. WORKFORCE MANAGEMENT
+- Forecasting and scheduling
+- Intraday management
+- Quality management
+- Performance management
+- Agent coaching
+- Gamification
+- Time and attendance
+
+D. ANALYTICS & REPORTING
+- Real-time dashboards
+- Historical reporting
+- Custom report builder
+- AI-driven insights
+- Journey analytics
+- Speech/text analytics
+- Quality analytics
+
+E. INTEGRATION & APIs
+- Pre-built CRM integrations
+- API capabilities (REST, SOAP, GraphQL)
+- Webhooks and event streaming
+- Middleware and connectors
+- Data export/import
+- SSO and authentication
+
+F. SCALABILITY & RELIABILITY
+- Concurrent user capacity
+- Geographic redundancy
+- Uptime SLA
+- Disaster recovery
+- Performance under load
+- Global presence
+
+G. SECURITY & COMPLIANCE
+- Security certifications
+- Data encryption
+- PCI DSS compliance
+- HIPAA compliance
+- GDPR compliance
+- SOC 2 compliance
+- Regional data residency
+
+PART 3: DETAILED DIFFERENTIATORS
+NICE Advantages (Top 10):
+- Each with: Feature description, business impact, proof points, customer examples
+
+{{competitor}} Advantages (Top 5-7):
+- Same level of detail
+
+PART 4: PRICING & COMMERCIAL COMPARISON
+- Licensing models (named user, concurrent, consumption-based)
+- Typical price ranges per agent/user
+- Minimum commitments
+- Contract terms (1-year, 3-year, 5-year)
+- Implementation costs
+- Training costs
+- Support tiers and costs
+- Hidden fees or gotchas
+- Discount strategies
+- Total cost of ownership analysis
+
+PART 5: CUSTOMER CONSIDERATIONS
+Decision criteria that favor NICE:
+- Company profiles
+- Use cases
+- Industry preferences
+- Technical requirements
+
+Decision criteria that favor {{competitor}}:
+- Same analysis
+
+PART 6: COMPETITIVE OBJECTIONS & RESPONSES
+Common objections when selling against {{competitor}}:
+- Each objection with: What they say, why they say it, factual response, positioning strategy
+
+PART 7: WIN/LOSS INTELLIGENCE
+- Recent competitive wins for NICE (if available)
+- Known competitive losses and why
+- Switching patterns (customers moving from competitor to NICE)
+- Competitive win rates by segment
+
+Include specific version numbers, feature availability, and recent updates.` + FORMATTING_INSTRUCTIONS,
+            
+            "2B": `Create an ultra-detailed competitive battle card for NICE {{niceProduct}} vs {{competitorProduct}}.
+
+🎯 COMPETITIVE POSITIONING (Expanded)
+- NICE one-sentence value prop
+- {{competitor}} one-sentence value prop  
+- Head-to-head positioning statement
+- When to use each positioning angle
+- Market perception of each vendor
+
+💪 TOP 10 NICE ADVANTAGES (Not just 5)
+For each advantage provide:
+1. Advantage title
+2. Detailed capability description
+3. Business impact and value
+4. Specific proof point (customer stat, case study, analyst quote)
+5. How to demo/prove this advantage
+6. Competitive positioning angle
+
+⚠️ COMPETITOR STRENGTHS (Complete List)
+For each strength:
+- What they do well
+- Why customers value it
+- How to acknowledge it credibly
+- Our counter-positioning
+- Differentiation angle
+- When this matters most/least
+
+🗣️ COMPREHENSIVE TALK TRACKS
+1. Opening positioning (3 variations for different audiences)
+2. "Why not {{competitor}}?" (detailed response with proof points)
+3. "{{competitor}} is cheaper" (value justification with TCO)
+4. "We're already using {{competitor}}" (switching business case)
+5. "{{competitor}} has feature X" (feature comparison response)
+6. "We're evaluating both" (differentiation clarity)
+7. Closing argument (summary positioning)
+
+❓ DISCOVERY QUESTIONS (Expanded - 15 questions)
+Organize by category:
+- Strategic questions (expose vision alignment)
+- Operational questions (expose capability gaps)
+- Technical questions (expose integration/scalability issues)
+- Financial questions (expose TCO concerns)
+- Risk questions (expose vendor concerns)
+
+Each question with: Question text, what you're trying to uncover, how NICE wins
+
+📊 PROOF POINTS & AMMUNITION
+- Customer win examples against this competitor
+- Case studies with ROI data
+- Analyst reports and quotes (Gartner, Forrester)
+- Awards and recognition
+- Customer satisfaction scores
+- Implementation success rates
+- Product certifications
+- Market statistics
+- Independent reviews
+
+🚩 RED FLAGS & DISCOVERY SIGNALS
+Signals {{competitor}} is in the deal:
+- What to listen for
+- What questions they ask
+- What documents they request
+- Timeline indicators
+- Budget indicators
+
+Early warning signs you might be behind:
+- Indicators and how to respond
+
+💰 PRICING & TCO BATTLE
+- How to position pricing conversations
+- TCO comparison framework
+- Hidden costs in {{competitor}} solution
+- ROI acceleration with NICE
+- Financing and commercial flexibility
+
+🎮 COMPETITIVE STRATEGIES
+- How to trap the evaluation in NICE's favor
+- Demo scenarios that showcase our strengths
+- POC requirements that favor NICE
+- Evaluation criteria to emphasize
+- Stakeholders who typically favor NICE
+
+⚔️ DEFENSIVE PLAYS
+If {{competitor}} is attacking our position:
+- Their typical FUD tactics
+- How they position against us
+- Our defensive responses
+- How to reinforce our value
+- Customer retention strategies
+
+Format as scannable one-pager with detailed backup sections.` + FORMATTING_INSTRUCTIONS,
+            
+            "2C": `Conduct comprehensive feature gap analysis: NICE {{niceProduct}} vs {{competitorProduct}} for {{industry}} customer.
+
+CUSTOMER REQUIREMENTS:
+{{requirements}}
+
+PART 1: DETAILED REQUIREMENT COVERAGE MATRIX
+For EACH stated requirement, provide:
+- Requirement name and description
+- Business importance (High/Medium/Low)
+- Technical complexity
+
+NICE Assessment:
+- ✅ Native capability (describe implementation)
+- ⚠️ Via integration (describe approach, partners)
+- ❌ Gap (acknowledge limitation)
+- Feature maturity (GA, Beta, Roadmap)
+- Version/release information
+- Implementation effort (Low/Medium/High)
+- Licensing implications
+
+{{competitor}} Assessment:
+- Same detailed analysis as NICE above
+
+Comparison Summary:
+- Who has the advantage and why
+- Deal impact (Could win, Neutral, Risk)
+
+PART 2: FEATURE PARITY ANALYSIS
+Table Stakes (Both Have):
+- List with maturity comparison
+
+NICE-Only Features:
+- Each with: Description, business value, customer examples, why competitor doesn't have it
+
+{{competitor}}-Only Features:
+- Same analysis, plus mitigation strategy
+
+PART 3: GAP MITIGATION STRATEGIES
+For each NICE gap:
+- Is it a real gap or different approach?
+- Partner/integration solutions available
+- Professional services solutions
+- Workarounds or alternatives
+- Roadmap timeline (if applicable)
+- Customer examples who've solved this
+- Cost to close gap
+- Risk level (High/Medium/Low)
+
+PART 4: COMPETITIVE GAPS TO EXPLOIT
+For each {{competitor}} gap:
+- How to expose in discovery
+- Demo scenarios to highlight
+- Proof points and evidence
+- Questions to ask
+- Business impact to emphasize
+
+PART 5: DIFFERENTIATION OPPORTUNITIES
+Based on requirements:
+- Top 5 NICE capabilities to emphasize
+- Why they matter for this customer
+- Proof points for each
+- Demo approach
+- How to quantify value
+
+PART 6: EVALUATION CRITERIA ENGINEERING
+Suggested RFP/evaluation criteria that favor NICE:
+- Must-have requirements
+- Weighted scoring approach
+- POC test scenarios
+- Reference check questions
+- Technical architecture requirements
+
+PART 7: RISK ASSESSMENT
+High Risk Gaps:
+- Could disqualify NICE
+- Mitigation required
+- Executive involvement needed
+
+Medium Risk:
+- Need strong positioning
+- Proof points required
+
+Low Risk:
+- Addressable in normal process
+
+{{competitor}} Risks We Can Exploit:
+- Their vulnerabilities
+- How to expose them
+- Evidence to provide
+
+PART 8: WIN STRATEGY SUMMARY
+- Overall strength position (Strong/Moderate/Weak)
+- Key battlegrounds
+- Must-win requirements
+- Negotiable requirements
+- Recommended approach
+- Resources needed
+- Executive engagement required
+
+Include specific version numbers, feature maturity, and implementation details.` + FORMATTING_INSTRUCTIONS,
+            
+            "2D": `Comprehensive competitive intelligence analysis: NICE vs {{competitor}} in {{segment}} market.
+
+PART 1: MARKET LANDSCAPE
+- {{segment}} market size and growth
+- Key players and market shares
+- NICE position in this segment
+- {{competitor}} position in this segment
+- Market dynamics and trends
+- Buying patterns and cycles
+
+PART 2: DETAILED WIN SCENARIO ANALYSIS
+
+NICE Typical Wins:
+Customer Profile Winners:
+- Company size (SMB, Mid-Market, Enterprise)
+- Industry verticals
+- Geographic regions
+- Contact center size (seats)
+- Use case types
+- Technical sophistication
+- Budget ranges
+
+Decision Criteria That Favor NICE:
+- Each criterion with why it favors us and proof points
+
+Buying Committee Preferences:
+- Which roles prefer NICE (CIO, CX, Ops, Finance)
+- Why they prefer us
+- How to reach them
+- Messaging for each
+
+Win Patterns & Themes:
+- Common win scenarios
+- Deal cycles that favor us
+- Successful competitive displacement stories
+- Customer testimonials and quotes
+
+{{competitor}} Typical Wins:
+- Same comprehensive analysis as NICE above
+
+PART 3: DEAL CONTROL STRATEGIES
+
+Early Engagement Tactics:
+- When to engage (before/during evaluation)
+- Initial discovery questions (15-20 strategic questions)
+- Information to gather
+- Stakeholders to map
+- Buying process to understand
+
+Trap-Setting Questions:
+- Questions that expose {{competitor}} weaknesses
+- What responses you're looking for
+- How to follow up
+- Evidence to provide
+
+Evaluation Criteria Engineering:
+- Must-have requirements favoring NICE (10-15 items)
+- Scoring/weighting approach
+- Technical requirements
+- Business requirements
+- POC test scenarios
+
+Stakeholder Engagement Strategy:
+- Economic buyer approach
+- Technical buyer approach
+- End user champion approach
+- Procurement approach
+- How to build coalition
+
+Proof Points to Establish Early:
+- Customer references to share
+- ROI and business case data
+- Product demonstrations
+- Analyst reports
+- Competitive wins
+
+PART 4: COMPETITIVE TRAP SETTING
+
+POC Design to Favor NICE:
+- Test scenarios
+- Success criteria
+- Environment requirements
+- Timeline approach
+
+Demo Scenarios:
+- 5-7 killer demos showcasing NICE strengths
+- Why each matters
+- {{competitor}} vulnerability it exposes
+
+Required Capabilities List:
+- Features NICE excels at
+- How to position as must-haves
+- Business justification
+
+Reference Customers:
+- Switching stories ({{competitor}} to NICE)
+- Success metrics
+- How to leverage
+
+PART 5: DEFENSIVE STRATEGIES
+
+How {{competitor}} Attacks:
+- Their typical FUD tactics
+- Claims they make about NICE
+- How they position their advantages
+- Questions they get customers to ask
+- Pricing strategies they use
+
+Our Counter-Strategies:
+- For each attack vector: Factual response, proof points, repositioning
+
+Customer Retention Playbook:
+- If we're incumbent
+- Renewal risk factors
+- How {{competitor}} tries to displace
+- Proactive defense tactics
+- Executive engagement approach
+- Value reinforcement strategies
+- Switching cost creation
+
+PART 6: SALES PLAY RECOMMENDATIONS
+
+Discovery Play:
+- Questions to ask
+- Information to gather
+- Traps to set
+
+Technical Evaluation Play:
+- Criteria to emphasize
+- POC approach
+- Architecture discussions
+
+Business Case Play:
+- ROI framework
+- TCO comparison
+- Value drivers
+- Risk mitigation
+
+Procurement/Negotiation Play:
+- Pricing strategy
+- Commercial flexibility
+- Competitive leverage
+
+Executive Relationship Play:
+- When to engage executives
+- What message they deliver
+- Strategic value discussions
+
+PART 7: ACCOUNT-SPECIFIC INTELLIGENCE
+If available for {{segment}}:
+- Recent wins and losses
+- Active deals and status
+- Competitive moves and counter-moves
+- Market trends affecting deals
+
+PART 8: TACTICAL SELLING GUIDANCE
+- Week-by-week deal progression strategy
+- Tools and resources to use
+- Who to involve (SEs, executives, partners)
+- Common mistakes to avoid
+- Escalation triggers
+
+Include specific examples, customer names (where allowed), deal stories, and recent market intelligence.` + FORMATTING_INSTRUCTIONS
+        };
+        
+        // Field definitions and other data (same as before)
+        const promptFields = {
+            "1A": [
+                {id: "companyName", label: "Company Name", type: "text", required: true},
+                {id: "industry", label: "Industry", type: "industry-select", required: false},
+                {id: "tone", label: "Tone (optional)", type: "text", placeholder: "brief and scannable"}
+            ],
+            "1B": [
+                {id: "companyName", label: "Company Name", type: "text", required: true}
+            ],
+            "1C": [
+                {id: "companyName", label: "Company Name", type: "text", required: true},
+                {id: "industry", label: "Industry", type: "industry-select", required: false},
+                {id: "approxSize", label: "Approximate Size", type: "text", placeholder: "e.g., 5,000 employees, $500M revenue", required: false}
+            ],
+            "2A": [
+                {id: "niceProduct", label: "NICE Product", type: "text", placeholder: "e.g., CXone, APA, IEX", required: true},
+                {id: "competitorProduct", label: "Competitor Product", type: "text", placeholder: "e.g., Genesys Cloud, Five9", required: true}
+            ],
+            "2B": [
+                {id: "niceProduct", label: "NICE Product", type: "text", placeholder: "e.g., CXone, APA, IEX", required: true},
+                {id: "competitorProduct", label: "Competitor Product", type: "text", placeholder: "e.g., Genesys Cloud, Five9", required: true}
+            ],
+            "2C": [
+                {id: "niceProduct", label: "NICE Product", type: "text", placeholder: "e.g., CXone, APA, IEX", required: true},
+                {id: "competitorProduct", label: "Competitor Product", type: "text", placeholder: "e.g., Genesys Cloud, Five9", required: true},
+                {id: "industry", label: "Industry / Segment", type: "industry-select", required: false},
+                {id: "requirements", label: "Requirements or Key Needs", type: "textarea", placeholder: "e.g., omnichannel support, AI-powered routing", required: true}
+            ],
+            "2D": [
+                {id: "competitor", label: "Competitor", type: "text", placeholder: "e.g., Genesys, Five9", required: false},
+                {id: "segment", label: "Industry / Segment", type: "segment-select", required: false}
+            ]
+        };
+        
+        const industries = ["Retail", "Healthcare", "Financial Services", "Telecommunications", "Insurance", "Technology", "Government", "Education", "Travel & Hospitality", "Utilities", "Manufacturing"];
+        
+        const promptNames = {
+            "1A": "Basic Industry & Pain Point Research",
+            "1B": "Company-Specific Deep Dive",
+            "1C": "Pain Point Hypothesis Builder",
+            "2A": "Basic Competitive Comparison Matrix",
+            "2B": "Competitive Battle Card Generator",
+            "2C": "Feature Gap Analysis",
+            "2D": "Competitive Win/Loss Intelligence"
+        };
+        
+        const outputDescriptions = {
+            "1A": "You will receive:<br><br>• Top 5 CX challenges in the industry<br>• Contact center pain points<br>• Recent trends & regulations<br>• Common technology stack<br>• Key performance metrics<br><br>Format: Brief, scannable report (3-min read)",
+            "1B": "You will receive:<br><br>• Company overview & market position<br>• Known CX challenges<br>• Technology environment<br>• Competitive intelligence<br>• Decision makers & buying signals<br><br>Format: Comprehensive pre-sales brief with actionable insights",
+            "1C": "You will receive:<br><br>• 3 likely operational challenges<br>• CX pain points for company size<br>• Workforce management issues<br>• Technology limitations<br>• Business outcomes to achieve<br><br>Format: Hypothesis with discovery questions and NICE solutions",
+            "2A": "You will receive:<br><br>• Product overview comparison<br>• Key differentiators<br>• Feature comparison matrix<br>• Pricing approaches<br>• Customer considerations<br>• Objection responses<br><br>Format: Detailed comparison with tables",
+            "2B": "You will receive:<br><br>• Competitive positioning<br>• Top 5 NICE advantages<br>• Competitor strengths to acknowledge<br>• Talk tracks & responses<br>• Discovery questions<br>• Proof points & red flags<br><br>Format: One-page battle card",
+            "2C": "You will receive:<br><br>• Requirement coverage matrix<br>• Feature parity analysis<br>• Gap mitigation strategies<br>• Differentiation opportunities<br>• Risk assessment<br><br>Format: Objective gap analysis with positioning guidance",
+            "2D": "You will receive:<br><br>• Win scenarios for NICE & competitor<br>• Deal control strategies<br>• Competitive trap setting<br>• Defensive strategies<br>• Tactical selling guidance<br><br>Format: Strategic competitive intelligence"
+        };
+        
+        const toolRecommendations = {
+            "1A": {recommended: ["gemini", "chatgpt", "copilot"], text: "💡 Recommended: Gemini, ChatGPT, or MS Copilot"},
+            "1B": {recommended: ["gemini", "chatgpt", "copilot"], text: "💡 Recommended: Gemini, ChatGPT, or MS Copilot"},
+            "1C": {recommended: ["gemini", "chatgpt", "copilot"], text: "💡 Recommended: Gemini, ChatGPT, or MS Copilot"},
+            "2A": {recommended: ["claude", "copilot"], text: "💡 Recommended: Claude or MS Copilot"},
+            "2B": {recommended: ["claude", "copilot"], text: "💡 Recommended: Claude or MS Copilot"},
+            "2C": {recommended: ["claude", "copilot"], text: "💡 Recommended: Claude or MS Copilot"},
+            "2D": {recommended: ["claude", "copilot"], text: "💡 Recommended: Claude or MS Copilot"}
+        };
+        
+        let currentPrompt = null;
+        let currentValues = {};
+        
+        // Load saved state
+        const savedPrompt = localStorage.getItem('selectedPrompt');
+        
+        if (savedPrompt) {
+            document.getElementById('promptSelect').value = savedPrompt;
+            currentPrompt = savedPrompt;
+        }
+        
+        // Prompt selection
+        document.getElementById('promptSelect').addEventListener('change', function(e) {
+            const promptId = e.target.value;
+            if (promptId) {
+                currentPrompt = promptId;
+                localStorage.setItem('selectedPrompt', promptId);
+                
+                // Show output preview in sidebar
+                document.getElementById('outputPreview').innerHTML = outputDescriptions[promptId];
+                document.getElementById('outputPreviewPanel').style.display = 'block';
+                
+                loadPromptFields(promptId);
+            } else {
+                currentPrompt = null;
+                document.getElementById('fieldsContainer').innerHTML = '';
+                document.getElementById('promptSection').classList.add('hidden');
+                document.getElementById('outputPreviewPanel').style.display = 'none';
+            }
+        });
+        
+        // Load form if prompt is already selected
+        if (currentPrompt) {
+            document.getElementById('outputPreview').innerHTML = outputDescriptions[currentPrompt];
+            document.getElementById('outputPreviewPanel').style.display = 'block';
+            loadPromptFields(currentPrompt);
+        }
+        
+        function loadPromptFields(promptId) {
+            const container = document.getElementById('fieldsContainer');
+            const panel = document.createElement('div');
+            panel.className = 'panel';
+            
+            const header = document.createElement('div');
+            header.className = 'panel-header';
+            header.textContent = 'Fill in Required Fields';
+            panel.appendChild(header);
+            
+            const body = document.createElement('div');
+            body.className = 'panel-body';
+            
+            const fields = promptFields[promptId];
+            fields.forEach(function(field) {
+                const fieldGroup = document.createElement('div');
+                fieldGroup.className = 'field-group';
+                
+                const label = document.createElement('label');
+                label.htmlFor = field.id;
+                label.innerHTML = field.label + (field.required ? '<span class="required">*</span>' : '');
+                fieldGroup.appendChild(label);
+                
+                let input;
+                if (field.type === 'textarea') {
+                    input = document.createElement('textarea');
+                    input.rows = 5;
+                } else if (field.type === 'industry-select' || field.type === 'segment-select') {
+                    input = document.createElement('select');
+                    input.innerHTML = '<option value="Unknown / Any">Unknown / Any</option>' +
+                        industries.map(function(ind) { return '<option value="' + ind + '">' + ind + '</option>'; }).join('') +
+                        '<option value="Other">Other (type it)</option>';
+                    
+                    const otherDiv = document.createElement('div');
+                    otherDiv.id = field.id + 'OtherDiv';
+                    otherDiv.className = 'field-group hidden';
+                    otherDiv.style.marginTop = '10px';
+                    
+                    const otherInput = document.createElement('input');
+                    otherInput.type = 'text';
+                    otherInput.id = field.id + 'Other';
+                    otherInput.placeholder = 'Type your industry/segment...';
+                    
+                    otherDiv.appendChild(otherInput);
+                    fieldGroup.appendChild(input);
+                    fieldGroup.appendChild(otherDiv);
+                    
+                    input.addEventListener('change', function(e) {
+                        if (e.target.value === 'Other') {
+                            otherDiv.classList.remove('hidden');
+                        } else {
+                            otherDiv.classList.add('hidden');
+                        }
+                    });
+                    
+                    const savedOther = localStorage.getItem('field_' + field.id + 'Other');
+                    if (savedOther) {
+                        otherInput.value = savedOther;
+                    }
+                    
+                    otherInput.addEventListener('input', function() {
+                        localStorage.setItem('field_' + field.id + 'Other', otherInput.value);
+                    });
+                    
+                    body.appendChild(fieldGroup);
+                    
+                    const savedValue = localStorage.getItem('field_' + field.id);
+                    if (savedValue) {
+                        input.value = savedValue;
+                        if (savedValue === 'Other') {
+                            otherDiv.classList.remove('hidden');
+                        }
+                    }
+                    
+                    input.addEventListener('change', function() {
+                        localStorage.setItem('field_' + field.id, input.value);
+                    });
+                    
+                    return;
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                }
+                
+                input.id = field.id;
+                input.placeholder = field.placeholder || '';
+                
+                fieldGroup.appendChild(input);
+                body.appendChild(fieldGroup);
+                
+                const savedValue = localStorage.getItem('field_' + field.id);
+                if (savedValue) {
+                    input.value = savedValue;
+                }
+                
+                input.addEventListener('input', function() {
+                    localStorage.setItem('field_' + field.id, input.value);
+                });
+            });
+            
+            const buttonDiv = document.createElement('div');
+            buttonDiv.className = 'button-group';
+            const generateBtn = document.createElement('button');
+            generateBtn.className = 'primary';
+            generateBtn.textContent = '✨ Generate Prompt';
+            generateBtn.onclick = generatePrompt;
+            buttonDiv.appendChild(generateBtn);
+            body.appendChild(buttonDiv);
+            
+            panel.appendChild(body);
+            
+            container.innerHTML = '';
+            container.appendChild(panel);
+        }
+        
+        function generatePrompt() {
+            if (!currentPrompt) {
+                alert('Please select a prompt');
+                return;
+            }
+            
+            const values = {};
+            const fields = promptFields[currentPrompt];
+            
+            let isValid = true;
+            fields.forEach(function(field) {
+                const input = document.getElementById(field.id);
+                let value = input ? input.value.trim() : '';
+                
+                if (field.type === 'industry-select' || field.type === 'segment-select') {
+                    if (value === 'Other') {
+                        const otherInput = document.getElementById(field.id + 'Other');
+                        value = otherInput ? otherInput.value.trim() : '';
+                    } else if (value === 'Unknown / Any') {
+                        value = field.type === 'industry-select' ? "prospect's industry" : "target segment";
+                    }
+                }
+                
+                values[field.id] = value;
+                
+                if (field.required && !value) {
+                    isValid = false;
+                    if (input) input.style.borderColor = '#ff7b7b';
+                } else if (input) {
+                    input.style.borderColor = '';
+                }
+            });
+            
+            if (!isValid) {
+                alert('Please fill in all required fields (marked with *)');
+                return;
+            }
+            
+            if (!values.tone) {
+                values.tone = 'brief and scannable';
+            }
+            
+            if (!values.competitor && values.competitorProduct) {
+                values.competitor = values.competitorProduct.split(' ')[0];
+            }
+            
+            currentValues = values;
+            
+            let prompt = promptTemplates[currentPrompt];
+            
+            Object.keys(values).forEach(function(key) {
+                const regex = new RegExp('\\{\\{' + key + '\\}\\}', 'g');
+                prompt = prompt.replace(regex, values[key]);
+            });
+            
+            document.getElementById('promptOutput').textContent = prompt;
+            document.getElementById('promptSection').classList.remove('hidden');
+            document.getElementById('promptSection').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        document.getElementById('copyPromptButton').addEventListener('click', function() {
+            const promptText = document.getElementById('promptOutput').textContent;
+            
+            // Try modern clipboard API first (requires HTTPS)
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(promptText).then(function() {
+                    showCopySuccess();
+                }).catch(function() {
+                    fallbackCopy(promptText);
+                });
+            } else {
+                fallbackCopy(promptText);
+            }
+        });
+        
+        function showCopySuccess() {
+            const msg = document.getElementById('copySuccess');
+            msg.style.display = 'block';
+            setTimeout(function() {
+                msg.style.display = 'none';
+            }, 3000);
+        }
+        
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess();
+            } catch (err) {
+                // Last resort: select the prompt text so user can Ctrl+C
+                const output = document.getElementById('promptOutput');
+                const range = document.createRange();
+                range.selectNodeContents(output);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                alert('Auto-copy not available. The prompt text has been selected — press Ctrl+C (or Cmd+C) to copy.');
+            }
+            document.body.removeChild(textarea);
+        }
+        
+        // Clear All button
+        document.getElementById('clearAllButton').addEventListener('click', function() {
+            if (confirm('Clear all saved data and reset the form?')) {
+                // Clear only our localStorage keys
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key === 'selectedPrompt' || key.startsWith('field_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                // Reset form
+                document.getElementById('promptSelect').value = '';
+                
+                // Reset state
+                currentPrompt = null;
+                currentValues = {};
+                
+                // Hide sections
+                document.getElementById('fieldsContainer').innerHTML = '';
+                document.getElementById('promptSection').classList.add('hidden');
+                document.getElementById('outputPreviewPanel').style.display = 'none';
+                
+                alert('✓ All data cleared!');
+            }
+        });
+        
+        // Tab switching function
+        function switchTab(tabId, clickedTab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            clickedTab.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+        
+        // Sanitize user input to prevent XSS in exports
+        function sanitizeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        // =============================================
+        // MARKDOWN TO HTML PARSER
+        // =============================================
+        // Strip formatting instructions that AI may echo back in its response
+        function stripFormattingInstructions(text) {
+            // Remove the entire formatting instructions block if present
+            // Match from "FORMATTING INSTRUCTIONS" header to end of that block
+            text = text.replace(/---\s*\n+###?\s*FORMATTING INSTRUCTIONS[\s\S]*?Use clean, readable Markdown throughout\.\s*/gi, '');
+            text = text.replace(/###?\s*FORMATTING INSTRUCTIONS[\s\S]*?Use clean, readable Markdown throughout\.\s*/gi, '');
+            // Also catch partial versions the AI might echo
+            text = text.replace(/FORMATTING INSTRUCTIONS\s*\(IMPORTANT[^)]*\):?\s*\n[\s\S]*?(?:Markdown throughout|actionable)\.\s*/gi, '');
+            // Clean up any trailing separators left behind
+            text = text.replace(/\n---\s*$/, '');
+            return text.trim();
+        }
+        
+        function markdownToHTML(md) {
+            md = stripFormattingInstructions(md);
+            let html = '';
+            const lines = md.split('\n');
+            let inTable = false;
+            let tableRows = [];
+            let inList = false;
+            
+            function flushTable() {
+                if (tableRows.length < 2) { 
+                    tableRows = []; 
+                    inTable = false; 
+                    return; 
+                }
+                html += '<table style="width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; page-break-inside: auto;">';
+                tableRows.forEach((row, idx) => {
+                    // Skip separator rows (|---|---|)
+                    if (/^\|[\s\-:|]+\|$/.test(row.trim())) return;
+                    const cells = row.split('|').filter((c, i, arr) => i > 0 && i < arr.length - 1);
+                    const tag = idx === 0 ? 'th' : 'td';
+                    const bgStyle = idx === 0 ? 'background: ${CONFIG.brandColor}; color: #fff; font-weight: bold;' : (idx % 2 === 0 ? 'background: #f5f7fa;' : '');
+                    html += '<tr>';
+                    cells.forEach(cell => {
+                        html += `<${tag} style="border: 1px solid #d0d7de; padding: 8px 10px; text-align: left; ${bgStyle}">${inlineFormat(cell.trim())}</${tag}>`;
+                    });
+                    html += '</tr>';
+                });
+                html += '</table>';
+                tableRows = [];
+                inTable = false;
+            }
+            
+            function flushList() {
+                if (inList) {
+                    html += '</ul>';
+                    inList = false;
+                }
+            }
+            
+            function inlineFormat(text) {
+                // Bold: **text**
+                text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                // Italic: *text*
+                text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+                // Inline code: `text`
+                text = text.replace(/`([^`]+)`/g, '<code style="background: #eef1f5; padding: 1px 5px; border-radius: 3px; font-size: 12px;">$1</code>');
+                // Links: [text](url)
+                text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: ${CONFIG.brandColor};">$1</a>');
+                return text;
+            }
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmed = line.trim();
+                
+                // Empty line
+                if (!trimmed) {
+                    if (inTable) flushTable();
+                    flushList();
+                    html += '<div style="height: 6px;"></div>';
+                    continue;
+                }
+                
+                // Table rows
+                if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+                    flushList();
+                    inTable = true;
+                    tableRows.push(trimmed);
+                    continue;
+                } else if (inTable) {
+                    flushTable();
+                }
+                
+                // Horizontal rule ---
+                if (/^-{3,}$/.test(trimmed) || /^\*{3,}$/.test(trimmed)) {
+                    flushList();
+                    html += '<hr style="border: none; border-top: 2px solid #d0d7de; margin: 20px 0;">';
+                    continue;
+                }
+                
+                // H1: # Header
+                if (/^#\s+(.+)/.test(trimmed)) {
+                    flushList();
+                    const text = trimmed.replace(/^#\s+/, '');
+                    html += `<h1 style="font-size: 20px; font-weight: bold; color: ${CONFIG.brandColor}; margin: 24px 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid ${CONFIG.brandColor}; page-break-after: avoid;">${inlineFormat(text)}</h1>`;
+                    continue;
+                }
+                
+                // H2: ## Header
+                if (/^##\s+(.+)/.test(trimmed)) {
+                    flushList();
+                    const text = trimmed.replace(/^##\s+/, '');
+                    html += `<h2 style="font-size: 16px; font-weight: bold; color: ${CONFIG.brandColor}; margin: 20px 0 8px 0; page-break-after: avoid;">${inlineFormat(text)}</h2>`;
+                    continue;
+                }
+                
+                // H3: ### Header
+                if (/^###\s+(.+)/.test(trimmed)) {
+                    flushList();
+                    const text = trimmed.replace(/^###\s+/, '');
+                    html += `<h3 style="font-size: 14px; font-weight: bold; color: #333; margin: 16px 0 6px 0; page-break-after: avoid;">${inlineFormat(text)}</h3>`;
+                    continue;
+                }
+                
+                // Numbered section headers (1. SECTION NAME, PART 1:, all-caps)
+                if (/^\d+\.\s+[A-Z]{2,}/.test(trimmed) || /^PART\s+\d/i.test(trimmed)) {
+                    flushList();
+                    html += `<h2 style="font-size: 16px; font-weight: bold; color: ${CONFIG.brandColor}; margin: 22px 0 8px 0; page-break-after: avoid;">${inlineFormat(trimmed)}</h2>`;
+                    continue;
+                }
+                
+                // Sub-headers ending with colon (e.g., "Customer Profile Winners:")
+                if (/^[A-Z][\w\s&\/\-()]+:$/.test(trimmed) && trimmed.length < 80) {
+                    flushList();
+                    html += `<h3 style="font-size: 13px; font-weight: bold; color: #444; margin: 14px 0 4px 0; page-break-after: avoid;">${inlineFormat(trimmed)}</h3>`;
+                    continue;
+                }
+                
+                // Bullet points (-, *, •, emoji bullets)
+                if (/^\s*[-*•]\s+/.test(line) || /^\s*[-•✅⚠️❌🎯💪⚠🗣❓📊🚩💰🎮⚔️]\s/.test(trimmed)) {
+                    const indent = line.search(/\S/);
+                    const marginLeft = indent > 2 ? 36 : 20;
+                    const bulletText = trimmed.replace(/^\s*[-*•]\s+/, '').replace(/^[-•✅⚠️❌🎯💪⚠🗣❓📊🚩💰🎮⚔️]\s*/, '');
+                    if (!inList) {
+                        html += '<ul style="margin: 6px 0; padding-left: 0; list-style: none;">';
+                        inList = true;
+                    }
+                    html += `<li style="font-size: 13px; color: #222; margin: 3px 0; padding-left: ${marginLeft}px; line-height: 1.6; position: relative;"><span style="position: absolute; left: ${marginLeft - 14}px; color: ${CONFIG.brandColor};">•</span>${inlineFormat(bulletText)}</li>`;
+                    continue;
+                } else if (inList) {
+                    flushList();
+                }
+                
+                // Numbered list items (1. text, but not section headers)
+                if (/^\d+\.\s+[a-z]/.test(trimmed) || /^\d+\.\s+[A-Z][a-z]/.test(trimmed)) {
+                    const num = trimmed.match(/^(\d+)\./)[1];
+                    const text = trimmed.replace(/^\d+\.\s+/, '');
+                    html += `<p style="font-size: 13px; color: #222; margin: 4px 0 4px 20px; line-height: 1.6;"><strong style="color: ${CONFIG.brandColor};">${num}.</strong> ${inlineFormat(text)}</p>`;
+                    continue;
+                }
+                
+                // Regular paragraph
+                html += `<p style="font-size: 13px; color: #222; margin: 6px 0; line-height: 1.7;">${inlineFormat(trimmed)}</p>`;
+            }
+            
+            if (inTable) flushTable();
+            flushList();
+            
+            return html;
+        }
+        
+        // =============================================
+        // LIVE PREVIEW
+        // =============================================
+        let previewTimeout = null;
+        function updatePreview() {
+            clearTimeout(previewTimeout);
+            previewTimeout = setTimeout(function() {
+                const aiOutput = document.getElementById('aiOutputPaste').value.trim();
+                const customerName = document.getElementById('customerName').value.trim();
+                const promptUsed = document.getElementById('promptUsed').value;
+                const previewPanel = document.getElementById('livePreviewPanel');
+                const previewContent = document.getElementById('livePreviewContent');
+                
+                if (!aiOutput) {
+                    previewPanel.style.display = 'none';
+                    return;
+                }
+                
+                previewPanel.style.display = 'block';
+                
+                const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                const safeName = sanitizeHTML(customerName || 'Customer');
+                const safePrompt = sanitizeHTML(promptUsed || 'Research Report');
+                const safeOutput = sanitizeHTML(aiOutput);
+                
+                previewContent.innerHTML = `
+                    <div style="text-align: right; font-weight: bold; font-size: 18px; color: ${CONFIG.brandColor}; margin-bottom: 20px;">${CONFIG.brandName}</div>
+                    <div style="text-align: center; padding: 30px 0 20px 0; border-bottom: 2px solid ${CONFIG.brandColor}; margin-bottom: 24px;">
+                        <div style="font-size: 22px; font-weight: bold; color: #000; margin-bottom: 8px;">${safeName}</div>
+                        <div style="font-size: 14px; color: #555; margin-bottom: 4px;">${safePrompt}</div>
+                        <div style="font-size: 13px; color: #777;">${currentDate} · Prepared by ${CONFIG.brandName} ${CONFIG.brandTagline}</div>
+                    </div>
+                    ${markdownToHTML(safeOutput)}
+                    <div style="text-align: center; margin-top: 30px; padding-top: 12px; border-top: 1px solid #d0d7de; font-size: 11px; color: #888;">
+                        ${CONFIG.brandName}${CONFIG.brandUrl ? " · " + CONFIG.brandUrl : ""} · Confidential
+                    </div>
+                `;
+                
+                previewContent.scrollTop = 0;
+            }, 300);
+        }
+        
+        // =============================================
+        // DOCUMENT EXPORT (PDF ONLY)
+        // =============================================
+        async function exportDocument(format) {
+            const customerName = document.getElementById('customerName').value.trim();
+            const promptUsed = document.getElementById('promptUsed').value;
+            const aiOutput = document.getElementById('aiOutputPaste').value.trim();
+            
+            if (!customerName || !promptUsed || !aiOutput) {
+                alert('Please fill in all required fields:\\n- Customer/Company Name\\n- Prompt Used\\n- AI Research Output');
+                return;
+            }
+            
+            const currentDate = new Date().toLocaleDateString('en-US', { 
+                month: 'long', 
+                day: 'numeric', 
+                year: 'numeric' 
+            });
+            
+            const safeCustomerName = sanitizeHTML(customerName);
+            const safePromptUsed = sanitizeHTML(promptUsed);
+            const safeAiOutput = sanitizeHTML(aiOutput);
+            
+            if (format === 'pdf') {
+                await exportAsPDF(safeCustomerName, safePromptUsed, safeAiOutput, currentDate);
+            } else if (format === 'docx') {
+                await exportAsWord(safeCustomerName, safePromptUsed, safeAiOutput, currentDate);
+            }
+        }
+        
+        async function exportAsPDF(customerName, promptUsed, aiOutput, currentDate) {
+            const element = document.createElement('div');
+            
+            // html2pdf at scale 3 with letter format (8.5x11in) at 96dpi base = 
+            // usable width with 1in margins = 6.5in * 96 * scale factor
+            // But we set margins in the opt config, so the rendered area is the margin-inset area.
+            // For cover page: we want it to fill the full first page (11in - margins).
+            // At 1in top+bottom margins, usable height = 9in. At 96dpi = 864px base.
+            // html2canvas scale doesn't change CSS pixel calculations, so we target 864px min-height.
+            
+            const coverPageHeight = 864; // 9 inches at 96dpi (letter height minus 1in top + 1in bottom margin)
+            
+            element.innerHTML = `
+                <div style="font-family: Arial, Helvetica, sans-serif; color: #222;">
+                    <!-- Cover Page - fills exactly one page -->
+                    <div style="height: ${coverPageHeight}px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; padding: 20px 0;">
+                        <div style="text-align: right; font-weight: bold; font-size: 24px; color: ${CONFIG.brandColor};">${CONFIG.brandName}</div>
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 20px;">
+                            <h1 style="font-size: 34px; font-weight: bold; color: #000; margin: 0 0 16px 0; line-height: 1.2;">${customerName}</h1>
+                            <p style="font-size: 17px; color: #444; margin: 10px 0;">${promptUsed}</p>
+                            <p style="font-size: 15px; color: #555; margin: 10px 0;">${currentDate}</p>
+                            <div style="width: 80px; height: 3px; background: ${CONFIG.brandColor}; margin: 20px auto;"></div>
+                            <p style="font-size: 13px; color: #666; margin-top: 14px;">Prepared by ${CONFIG.brandName} ${CONFIG.brandTagline}</p>
+                        </div>
+                        <div style="text-align: center; font-size: 11px; color: #999;">${CONFIG.brandName}${CONFIG.brandUrl ? " · " + CONFIG.brandUrl : ""} · Confidential</div>
+                    </div>
+                    
+                    <!-- Page break after cover -->
+                    <div style="page-break-before: always; page-break-after: auto;"></div>
+                    
+                    <!-- Content Pages -->
+                    <div>
+                        <h1 style="font-size: 20px; font-weight: bold; color: ${CONFIG.brandColor}; border-bottom: 3px solid ${CONFIG.brandColor}; padding-bottom: 8px; margin: 0 0 20px 0;">${customerName} — Research Report</h1>
+                        ${markdownToHTML(aiOutput)}
+                        <div style="text-align: center; margin-top: 40px; padding-top: 14px; border-top: 1px solid #d0d7de; font-size: 11px; color: #888;">
+                            ${CONFIG.brandName}${CONFIG.brandUrl ? " · " + CONFIG.brandUrl : ""} · Confidential
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const opt = {
+                margin: [1, 1, 1, 1], // 1 inch all sides
+                filename: CONFIG.brandName + '_' + customerName.replace(/[^a-z0-9]/gi, '_') + '.pdf',
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: { scale: 3, useCORS: true, logging: false },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+                pagebreak: { mode: ['css'], before: [], after: [], avoid: ['tr', 'td', 'li'] }
+            };
+            
+            try {
+                await html2pdf().set(opt).from(element).save();
+                alert('✓ PDF generated successfully!');
+            } catch (error) {
+                console.error('PDF export error:', error);
+                alert('Error generating PDF. Check console for details.');
+            }
+        }
+        
+        async function exportAsWord(customerName, promptUsed, aiOutput, currentDate) {
+            // Detect the docx library (UMD build may expose as 'docx' or 'Docx')
+            const docxLib = window.docx || window.Docx;
+            if (!docxLib) {
+                alert('Error: Word export library failed to load. Please check your internet connection and try again.');
+                return;
+            }
+            
+            const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+                    AlignmentType, HeadingLevel, LevelFormat, BorderStyle, WidthType, 
+                    ShadingType, PageBreak, VerticalAlign } = docxLib;
+            
+            // Strip formatting instructions
+            aiOutput = stripFormattingInstructions(aiOutput);
+            
+            // Parse markdown into docx elements
+            function parseMarkdownToDocx(md) {
+                const children = [];
+                const lines = md.split('\n');
+                let tableBuffer = [];
+                let inTable = false;
+                
+                function flushTable() {
+                    if (tableBuffer.length < 2) { tableBuffer = []; inTable = false; return; }
+                    
+                    // Parse table rows
+                    const dataRows = tableBuffer.filter(r => !/^\|[\s\-:|]+\|$/.test(r.trim()));
+                    if (dataRows.length === 0) { tableBuffer = []; inTable = false; return; }
+                    
+                    const parsedRows = dataRows.map(r => 
+                        r.split('|').filter((c, i, a) => i > 0 && i < a.length - 1).map(c => c.trim())
+                    );
+                    
+                    const colCount = parsedRows[0].length;
+                    const colWidth = Math.floor(9360 / colCount);
+                    const border = { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" };
+                    const borders = { top: border, bottom: border, left: border, right: border };
+                    
+                    const rows = parsedRows.map((cells, idx) => {
+                        return new TableRow({
+                            children: cells.map(cell => new TableCell({
+                                borders,
+                                width: { size: colWidth, type: WidthType.DXA },
+                                shading: idx === 0 ? { fill: "1a73e8", type: ShadingType.CLEAR } : 
+                                         (idx % 2 === 0 ? { fill: "F5F7FA", type: ShadingType.CLEAR } : undefined),
+                                margins: { top: 60, bottom: 60, left: 100, right: 100 },
+                                children: [new Paragraph({
+                                    children: parseInline(cell, idx === 0),
+                                    spacing: { before: 40, after: 40 }
+                                })]
+                            }))
+                        });
+                    });
+                    
+                    children.push(new Table({
+                        width: { size: 9360, type: WidthType.DXA },
+                        columnWidths: Array(colCount).fill(colWidth),
+                        rows
+                    }));
+                    children.push(new Paragraph({ spacing: { before: 100, after: 100 } }));
+                    tableBuffer = [];
+                    inTable = false;
+                }
+                
+                function parseInline(text, bold) {
+                    // Simple inline parser - handles **bold** and regular text
+                    const runs = [];
+                    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+                    parts.forEach(part => {
+                        if (/^\*\*(.+)\*\*$/.test(part)) {
+                            runs.push(new TextRun({ text: part.replace(/\*\*/g, ''), bold: true, 
+                                font: "Arial", size: 20, color: bold ? "FFFFFF" : undefined }));
+                        } else if (part) {
+                            runs.push(new TextRun({ text: part, bold: !!bold, 
+                                font: "Arial", size: 20, color: bold ? "FFFFFF" : undefined }));
+                        }
+                    });
+                    return runs.length ? runs : [new TextRun({ text: text || " ", font: "Arial", size: 20 })];
+                }
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const trimmed = line.trim();
+                    
+                    if (!trimmed) {
+                        if (inTable) flushTable();
+                        continue;
+                    }
+                    
+                    // Table rows
+                    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+                        inTable = true;
+                        tableBuffer.push(trimmed);
+                        continue;
+                    }
+                    if (inTable) flushTable();
+                    
+                    // Horizontal rule
+                    if (/^---+$/.test(trimmed)) continue;
+                    
+                    // H1
+                    if (/^#\s+(.+)/.test(trimmed)) {
+                        const text = trimmed.replace(/^#\s+/, '').replace(/\*\*/g, '');
+                        children.push(new Paragraph({
+                            heading: HeadingLevel.HEADING_1,
+                            children: [new TextRun({ text, font: "Arial" })],
+                            spacing: { before: 360, after: 160 }
+                        }));
+                        continue;
+                    }
+                    
+                    // H2
+                    if (/^##\s+(.+)/.test(trimmed)) {
+                        const text = trimmed.replace(/^##\s+/, '').replace(/\*\*/g, '');
+                        children.push(new Paragraph({
+                            heading: HeadingLevel.HEADING_2,
+                            children: [new TextRun({ text, font: "Arial" })],
+                            spacing: { before: 280, after: 120 }
+                        }));
+                        continue;
+                    }
+                    
+                    // H3
+                    if (/^###\s+(.+)/.test(trimmed)) {
+                        const text = trimmed.replace(/^###\s+/, '').replace(/\*\*/g, '');
+                        children.push(new Paragraph({
+                            heading: HeadingLevel.HEADING_3,
+                            children: [new TextRun({ text, font: "Arial" })],
+                            spacing: { before: 200, after: 80 }
+                        }));
+                        continue;
+                    }
+                    
+                    // Numbered section headers (1. SECTION, PART 1:)
+                    if (/^\d+\.\s+[A-Z]{2,}/.test(trimmed) || /^PART\s+\d/i.test(trimmed)) {
+                        children.push(new Paragraph({
+                            heading: HeadingLevel.HEADING_2,
+                            children: [new TextRun({ text: trimmed.replace(/\*\*/g, ''), font: "Arial" })],
+                            spacing: { before: 280, after: 120 }
+                        }));
+                        continue;
+                    }
+                    
+                    // Sub-headers ending with colon
+                    if (/^[A-Z][\w\s&\/\-()]+:$/.test(trimmed) && trimmed.length < 80) {
+                        children.push(new Paragraph({
+                            heading: HeadingLevel.HEADING_3,
+                            children: [new TextRun({ text: trimmed, font: "Arial" })],
+                            spacing: { before: 160, after: 60 }
+                        }));
+                        continue;
+                    }
+                    
+                    // Bullet points
+                    if (/^\s*[-*•]\s+/.test(line) || /^\s*[-•✅⚠️❌🎯💪⚠🗣❓📊🚩💰🎮⚔️]\s/.test(trimmed)) {
+                        const bulletText = trimmed.replace(/^\s*[-*•]\s+/, '').replace(/^[-•✅⚠️❌🎯💪⚠🗣❓📊🚩💰🎮⚔️]\s*/, '');
+                        const indent = line.search(/\S/);
+                        children.push(new Paragraph({
+                            numbering: { reference: indent > 2 ? "subBullets" : "bullets", level: 0 },
+                            children: parseInline(bulletText, false),
+                            spacing: { before: 40, after: 40 }
+                        }));
+                        continue;
+                    }
+                    
+                    // Numbered list
+                    if (/^\d+\.\s+(?![A-Z]{2,})/.test(trimmed)) {
+                        const text = trimmed.replace(/^\d+\.\s+/, '');
+                        children.push(new Paragraph({
+                            numbering: { reference: "numbers", level: 0 },
+                            children: parseInline(text, false),
+                            spacing: { before: 40, after: 40 }
+                        }));
+                        continue;
+                    }
+                    
+                    // Regular paragraph
+                    children.push(new Paragraph({
+                        children: parseInline(trimmed, false),
+                        spacing: { before: 60, after: 60 }
+                    }));
+                }
+                
+                if (inTable) flushTable();
+                return children;
+            }
+            
+            // Build the document
+            const brandHex = CONFIG.brandColor.replace('#', '');
+            
+            const doc = new Document({
+                styles: {
+                    default: { document: { run: { font: "Arial", size: 22 } } },
+                    paragraphStyles: [
+                        { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
+                          run: { size: 32, bold: true, font: "Arial", color: brandHex },
+                          paragraph: { spacing: { before: 360, after: 160 }, outlineLevel: 0 } },
+                        { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
+                          run: { size: 26, bold: true, font: "Arial", color: brandHex },
+                          paragraph: { spacing: { before: 280, after: 120 }, outlineLevel: 1 } },
+                        { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
+                          run: { size: 22, bold: true, font: "Arial", color: "333333" },
+                          paragraph: { spacing: { before: 200, after: 80 }, outlineLevel: 2 } },
+                    ]
+                },
+                numbering: {
+                    config: [
+                        { reference: "bullets",
+                          levels: [{ level: 0, format: LevelFormat.BULLET, text: "\u2022", alignment: AlignmentType.LEFT,
+                            style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+                        { reference: "subBullets",
+                          levels: [{ level: 0, format: LevelFormat.BULLET, text: "\u2013", alignment: AlignmentType.LEFT,
+                            style: { paragraph: { indent: { left: 1080, hanging: 360 } } } }] },
+                        { reference: "numbers",
+                          levels: [{ level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT,
+                            style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+                    ]
+                },
+                sections: [
+                    // Cover page
+                    {
+                        properties: {
+                            page: {
+                                size: { width: 12240, height: 15840 },
+                                margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+                            }
+                        },
+                        children: [
+                            new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 200 },
+                                children: [new TextRun({ text: CONFIG.brandName, bold: true, size: 40, font: "Arial", color: brandHex })] }),
+                            // Spacer paragraphs to push content to center
+                            ...Array(8).fill(null).map(() => new Paragraph({ spacing: { before: 400 } })),
+                            new Paragraph({ alignment: AlignmentType.CENTER,
+                                children: [new TextRun({ text: customerName, bold: true, size: 60, font: "Arial", color: "000000" })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 },
+                                children: [new TextRun({ text: promptUsed, size: 28, font: "Arial", color: "444444" })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 },
+                                children: [new TextRun({ text: currentDate, size: 24, font: "Arial", color: "555555" })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400 },
+                                children: [new TextRun({ text: "━━━━━━━━━━", size: 24, color: brandHex })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 },
+                                children: [new TextRun({ text: `Prepared by ${CONFIG.brandName} ${CONFIG.brandTagline}`, size: 22, font: "Arial", color: "666666" })] }),
+                            // Spacer to push footer down
+                            ...Array(6).fill(null).map(() => new Paragraph({ spacing: { before: 400 } })),
+                            new Paragraph({ alignment: AlignmentType.CENTER,
+                                children: [new TextRun({ text: `${CONFIG.brandName}${CONFIG.brandUrl ? " · " + CONFIG.brandUrl : ""} · Confidential`, size: 18, font: "Arial", color: "999999" })] }),
+                        ]
+                    },
+                    // Content pages
+                    {
+                        properties: {
+                            page: {
+                                size: { width: 12240, height: 15840 },
+                                margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+                            }
+                        },
+                        children: [
+                            new Paragraph({
+                                heading: HeadingLevel.HEADING_1,
+                                children: [new TextRun({ text: `${customerName} — Research Report`, font: "Arial" })],
+                                spacing: { after: 300 },
+                                border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: brandHex } }
+                            }),
+                            ...parseMarkdownToDocx(aiOutput),
+                            new Paragraph({ spacing: { before: 600 } }),
+                            new Paragraph({ alignment: AlignmentType.CENTER,
+                                border: { top: { style: BorderStyle.SINGLE, size: 1, color: "D0D7DE" } },
+                                spacing: { before: 200 },
+                                children: [new TextRun({ text: `${CONFIG.brandName}${CONFIG.brandUrl ? " · " + CONFIG.brandUrl : ""} · Confidential`, size: 18, font: "Arial", color: "888888" })] }),
+                        ]
+                    }
+                ]
+            });
+            
+            try {
+                const buffer = await Packer.toBlob(doc);
+                saveAs(buffer, CONFIG.brandName + '_' + customerName.replace(/[^a-z0-9]/gi, '_') + '.docx');
+                alert('✓ Word document generated successfully!');
+            } catch (error) {
+                console.error('Word export error:', error);
+                alert('Error generating Word document: ' + error.message + '\n\nCheck browser console (F12) for details.');
+            }
+        }
+    </script>
+</body>
+</html>
