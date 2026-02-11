@@ -1564,7 +1564,15 @@ Include specific examples, customer names (where allowed), deal stories, and rec
             div.textContent = str;
             return div.innerHTML;
         }
-        
+
+        // Decode HTML entities back to characters (e.g., &amp; -> &)
+        // Useful when text was previously escaped for HTML but needs to be used as plain text (e.g., Word export)
+        function decodeHTMLEntities(str) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = str;
+            return txt.value;
+        }
+
         // =============================================
         // MARKDOWN TO HTML PARSER
         // =============================================
@@ -1796,11 +1804,18 @@ Include specific examples, customer names (where allowed), deal stories, and rec
             const safeCustomerName = sanitizeHTML(customerName);
             const safePromptUsed = sanitizeHTML(promptUsed);
             const safeAiOutput = sanitizeHTML(aiOutput);
-            
+
             if (format === 'pdf') {
+                // PDF uses HTML rendering, so keep the escaped/HTML-safe versions
                 await exportAsPDF(safeCustomerName, safePromptUsed, safeAiOutput, currentDate);
             } else if (format === 'docx') {
-                await exportAsWord(safeCustomerName, safePromptUsed, safeAiOutput, currentDate);
+                // Word export is plain text; decode entities so '&' doesn't appear as '&amp;'
+                await exportAsWord(
+                    decodeHTMLEntities(safeCustomerName),
+                    decodeHTMLEntities(safePromptUsed),
+                    decodeHTMLEntities(safeAiOutput),
+                    currentDate
+                );
             }
         }
         
